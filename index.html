@@ -294,6 +294,14 @@
   .random-mix-desc { font-size:0.82rem; opacity:0.92; }
   .kind-badge.kind-mix { background: var(--purple-bg); color: var(--purple); }
 
+  .review-mistakes-card { display:flex; flex-direction:column; gap:6px; text-align:left; border:none; margin-bottom:16px;
+    background: linear-gradient(120deg, var(--red), #b93a3a); color:#fff;
+    transition: transform 0.12s ease, box-shadow 0.12s ease; }
+  .review-mistakes-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .review-mistakes-title { display:flex; align-items:center; gap:8px; font-weight:800; font-size:1.05rem; }
+  .review-mistakes-title .icon { color:#fff; }
+  .review-mistakes-desc { font-size:0.82rem; opacity:0.92; }
+
   .course-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:16px; }
   .course-card { display:flex; flex-direction:column; gap:8px; text-align:left; border:1px solid var(--border); transition: transform 0.12s ease, box-shadow 0.12s ease; }
   .course-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
@@ -533,7 +541,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     lifetimeCorrect: LS_PREFIX + "lifetimeCorrect",
     perfectSection: LS_PREFIX + "perfectSection",
     mixSessionsCompleted: LS_PREFIX + "mixSessionsCompleted",
-    perfectMixLarge: LS_PREFIX + "perfectMixLarge"
+    perfectMixLarge: LS_PREFIX + "perfectMixLarge",
+    missedQuestions: LS_PREFIX + "missedQuestions"
   };
   var ALL_LS_KEYS = Object.keys(LS_KEYS).map(function (k) { return LS_KEYS[k]; });
 
@@ -542,7 +551,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       xp: 0, lastActive: null, curStreak: 0, longStreak: 0, celebrated: [],
       sectionStats: {}, badges: [], examHistory: [], lifetimeAnswered: 0,
       lifetimeCorrect: 0, perfectSection: false,
-      mixSessionsCompleted: 0, perfectMixLarge: false
+      mixSessionsCompleted: 0, perfectMixLarge: false,
+      missedQuestions: {}
     };
   }
 
@@ -560,7 +570,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       lifetimeCorrect: lsGet(LS_KEYS.lifetimeCorrect, 0),
       perfectSection: lsGet(LS_KEYS.perfectSection, false),
       mixSessionsCompleted: lsGet(LS_KEYS.mixSessionsCompleted, 0),
-      perfectMixLarge: lsGet(LS_KEYS.perfectMixLarge, false)
+      perfectMixLarge: lsGet(LS_KEYS.perfectMixLarge, false),
+      missedQuestions: lsGet(LS_KEYS.missedQuestions, {})
     };
   }
 
@@ -578,6 +589,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     lsSet(LS_KEYS.perfectSection, State.perfectSection);
     lsSet(LS_KEYS.mixSessionsCompleted, State.mixSessionsCompleted);
     lsSet(LS_KEYS.perfectMixLarge, State.perfectMixLarge);
+    lsSet(LS_KEYS.missedQuestions, State.missedQuestions);
     if (!skipSync) scheduleSync();
   }
 
@@ -714,7 +726,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     bolt: '<path d="M13 2L4 14h6l-1 8 9-12h-6l1-8Z" fill="currentColor"/>',
     user: '<circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21c0-4.5 3.6-7 8-7s8 2.5 8 7" fill="currentColor"/>',
     sun: '<circle cx="12" cy="12" r="4.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
-    moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" fill="currentColor"/>'
+    moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" fill="currentColor"/>',
+    redo: '<path d="M4 12a8 8 0 1 1 2.5 5.8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M4 17v-5h5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
   };
   function svgIcon(name, cls) {
     var c = cls ? " " + cls : "";
@@ -891,8 +904,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var pool = [];
     COURSES.forEach(function (course) {
       DATA[course].sections.forEach(function (sec) {
-        sec.questions.forEach(function (q) {
-          pool.push({ course: course, sectionId: sec.id, sectionTitle: sec.title, kind: sec.kind, q: q });
+        sec.questions.forEach(function (q, qIndex) {
+          pool.push({ course: course, sectionId: sec.id, sectionTitle: sec.title, kind: sec.kind, qIndex: qIndex, q: q });
         });
       });
     });
@@ -998,9 +1011,9 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
         if (sec.kind === "exam") return;
         var domain = SECTION_DOMAIN[sec.id];
         if (!domain) return;
-        sec.questions.forEach(function (q) {
+        sec.questions.forEach(function (q, qIndex) {
           if (!CCNA_SIM_TYPES[q.type]) return;
-          pool.push({ course: course, sectionId: sec.id, sectionTitle: sec.title, kind: sec.kind, domain: domain, q: q });
+          pool.push({ course: course, sectionId: sec.id, sectionTitle: sec.title, kind: sec.kind, domain: domain, qIndex: qIndex, q: q });
         });
       });
     });
@@ -1364,6 +1377,54 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     navigate("study-question");
   }
 
+  /* =========================================================
+     MISSED-QUESTION TRACKING
+     Every wrong answer (Study, Random Mix, or any exam) records
+     "course|sectionId|qIndex" in State.missedQuestions; a later
+     correct answer to that same question clears it again. This
+     keys purely off array position within a section's static
+     questions list, which never reorders, so it's stable.
+     ========================================================= */
+  function missedKey(course, sectionId, qIndex) {
+    return course + "|" + sectionId + "|" + qIndex;
+  }
+
+  function updateMissedQuestions(course, sectionId, qIndex, isCorrect) {
+    var key = missedKey(course, sectionId, qIndex);
+    if (isCorrect) delete State.missedQuestions[key];
+    else State.missedQuestions[key] = true;
+  }
+
+  function currentQuestionMeta() {
+    if (Study.mixed) {
+      var item = Study.pool[Study.order[Study.idx]];
+      return { course: item.course, sectionId: item.sectionId, qIndex: item.qIndex };
+    }
+    return { course: Study.course, sectionId: Study.sectionId, qIndex: Study.order[Study.idx] };
+  }
+
+  function startMissedReviewStudy() {
+    var pool = Object.keys(State.missedQuestions).map(function (key) {
+      var parts = key.split("|");
+      var course = parts[0], sectionId = parts[1], qIndex = Number(parts[2]);
+      var section = DATA[course] && DATA[course].sections.filter(function (s) { return s.id === sectionId; })[0];
+      if (!section || !section.questions[qIndex]) return null;
+      return { course: course, sectionId: sectionId, sectionTitle: section.title, kind: section.kind, qIndex: qIndex, q: section.questions[qIndex] };
+    }).filter(function (item) { return item !== null; });
+    if (pool.length === 0) {
+      showToast("No mistakes to review", "You've corrected every missed question. Nice work!", "info");
+      return;
+    }
+    Study = {
+      course: null, sectionId: null, mixed: true, reviewingMissed: true, pool: pool,
+      section: { id: "__review__", title: "Review Mistakes", kind: "mix", questions: pool.map(function (item) { return item.q; }) },
+      order: shuffleArr(pool.map(function (_, i) { return i; })),
+      idx: 0, correctCount: 0, xpGained: 0, submitted: false, lastCorrect: false,
+      userAnswer: null, matchPairing: {}, matchRightOrder: null, activeLeft: null
+    };
+    navigate("study-question");
+  }
+
   function submitStudyAnswer() {
     if (!Study || Study.submitted) return;
     var q = currentQuestionObj();
@@ -1374,12 +1435,9 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var xp = isCorrect ? 10 : 2;
     Study.xpGained += xp;
     addXP(xp);
-    if (Study.mixed) {
-      var item = Study.pool[Study.order[Study.idx]];
-      recordAnswer(item.course, item.sectionId, isCorrect);
-    } else {
-      recordAnswer(Study.course, Study.sectionId, isCorrect);
-    }
+    var meta = currentQuestionMeta();
+    updateMissedQuestions(meta.course, meta.sectionId, meta.qIndex, isCorrect);
+    recordAnswer(meta.course, meta.sectionId, isCorrect);
     touchActivity();
     render();
     checkBadges();
@@ -1403,11 +1461,12 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
 
   function finishStudySection() {
     var total = Study.order.length;
+    var isRandomMix = Study.mixed && !Study.reviewingMissed;
     if (total > 0 && Study.correctCount === total) {
       State.perfectSection = true;
-      if (Study.mixed && total >= 30) State.perfectMixLarge = true;
+      if (isRandomMix && total >= 30) State.perfectMixLarge = true;
     }
-    if (Study.mixed) State.mixSessionsCompleted += 1;
+    if (isRandomMix) State.mixSessionsCompleted += 1;
     saveState();
     checkBadges();
     navigate("study-summary");
@@ -1415,7 +1474,9 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
 
   function restartStudySection() {
     if (!Study) return;
-    if (Study.mixed) startRandomMixStudy(); else startStudySection(Study.course, Study.sectionId);
+    if (Study.reviewingMissed) startMissedReviewStudy();
+    else if (Study.mixed) startRandomMixStudy();
+    else startStudySection(Study.course, Study.sectionId);
   }
 
   function exitStudy() {
@@ -1517,6 +1578,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       if (isCorrect) correctCount++;
       if (ans.answered) {
         xpGain += 5;
+        updateMissedQuestions(item.course, item.sectionId, item.qIndex, isCorrect);
         recordAnswer(item.course, item.sectionId, isCorrect);
       }
       var key = item.course + "|" + item.sectionId;
@@ -1884,7 +1946,15 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
      ========================================================= */
   function renderStudyCoursePick() {
     var mixCount = buildQuestionPool().length;
+    var missedCount = Object.keys(State.missedQuestions).length;
     return '<div class="view-header"><h2>Study Mode</h2></div>' +
+      (missedCount > 0
+        ? '<button class="card review-mistakes-card full-w" onclick="App.startMissedReviewStudy()">' +
+          '<div class="review-mistakes-title">' + svgIcon("redo") + " Review Mistakes</div>" +
+          '<div class="review-mistakes-desc">Retry every question you\'ve answered incorrectly so far (' + missedCount + (missedCount === 1 ? " question" : " questions") +
+          "). Get one right and it drops off this list.</div>" +
+          "</button>"
+        : "") +
       '<button class="card random-mix-card full-w" onclick="App.startRandomMixStudy()">' +
       '<div class="random-mix-title">' + svgIcon("bolt") + " Random Mix</div>" +
       '<div class="random-mix-desc">Random questions in random order, pulled from every course, module and exam (' + mixCount + " questions).</div>" +
@@ -1952,8 +2022,11 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     if (!Study) return renderStudyCoursePick();
     var total = Study.order.length;
     var mixed = !!Study.mixed;
+    var reviewing = !!Study.reviewingMissed;
     var scorePct = total > 0 ? Math.round(100 * Study.correctCount / total) : 0;
-    var thirdTile = mixed
+    var thirdTile = reviewing
+      ? '<div class="summary-stat"><div class="big">' + Object.keys(State.missedQuestions).length + '</div><div class="lbl">Still to review</div></div>'
+      : mixed
       ? '<div class="summary-stat"><div class="big">' + COURSES.length + '</div><div class="lbl">Courses mixed</div></div>'
       : (function () {
           var stat = getSectionStat(Study.course, Study.sectionId);
@@ -1961,15 +2034,18 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
           var pct = masteryPct(stat);
           return '<div class="summary-stat"><div class="big tier-' + tier + '">' + tierLabel(tier) + '</div><div class="lbl">Section mastery (' + pct + '%)</div></div>';
         })();
-    return '<div class="card summary-card"><h2>' + (mixed ? "Random Mix Complete" : "Section Complete") + '</h2><h3>' + esc(Study.section.title) + '</h3>' +
+    var title = reviewing ? "Review Complete" : (mixed ? "Random Mix Complete" : "Section Complete");
+    var restartLabel = reviewing ? "Review Again" : (mixed ? "New Random Mix" : "Study Again");
+    var backLabel = (reviewing || mixed) ? "Back to Study Mode" : "Back to Sections";
+    return '<div class="card summary-card"><h2>' + title + '</h2><h3>' + esc(Study.section.title) + '</h3>' +
       '<div class="summary-stats">' +
       '<div class="summary-stat"><div class="big">' + Study.correctCount + "/" + total + '</div><div class="lbl">Correct (' + scorePct + '%)</div></div>' +
       '<div class="summary-stat"><div class="big">+' + Study.xpGained + '</div><div class="lbl">XP earned</div></div>' +
       thirdTile +
       "</div>" +
       '<div class="btn-row">' +
-      '<button class="btn btn-secondary" onclick="App.restartStudySection()">' + (mixed ? "New Random Mix" : "Study Again") + '</button>' +
-      '<button class="btn btn-secondary" onclick="App.exitStudy()">' + (mixed ? "Back to Study Mode" : "Back to Sections") + '</button>' +
+      '<button class="btn btn-secondary" onclick="App.restartStudySection()">' + restartLabel + '</button>' +
+      '<button class="btn btn-secondary" onclick="App.exitStudy()">' + backLabel + '</button>' +
       '<button class="btn btn-primary" onclick="App.go(\'dashboard\')">Dashboard</button>' +
       "</div></div>";
   }
@@ -2200,6 +2276,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     pickStudyCourse: pickStudyCourse,
     jumpStudy: jumpStudy,
     startRandomMixStudy: startRandomMixStudy,
+    startMissedReviewStudy: startMissedReviewStudy,
     submitStudyAnswer: submitStudyAnswer,
     nextStudyQuestion: nextStudyQuestion,
     restartStudySection: restartStudySection,
