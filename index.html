@@ -466,7 +466,9 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     examHistory: LS_PREFIX + "examHistory",
     lifetimeAnswered: LS_PREFIX + "lifetimeAnswered",
     lifetimeCorrect: LS_PREFIX + "lifetimeCorrect",
-    perfectSection: LS_PREFIX + "perfectSection"
+    perfectSection: LS_PREFIX + "perfectSection",
+    mixSessionsCompleted: LS_PREFIX + "mixSessionsCompleted",
+    perfectMixLarge: LS_PREFIX + "perfectMixLarge"
   };
   var ALL_LS_KEYS = Object.keys(LS_KEYS).map(function (k) { return LS_KEYS[k]; });
 
@@ -474,7 +476,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     return {
       xp: 0, lastActive: null, curStreak: 0, longStreak: 0, celebrated: [],
       sectionStats: {}, badges: [], examHistory: [], lifetimeAnswered: 0,
-      lifetimeCorrect: 0, perfectSection: false
+      lifetimeCorrect: 0, perfectSection: false,
+      mixSessionsCompleted: 0, perfectMixLarge: false
     };
   }
 
@@ -490,7 +493,9 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       examHistory: lsGet(LS_KEYS.examHistory, []),
       lifetimeAnswered: lsGet(LS_KEYS.lifetimeAnswered, 0),
       lifetimeCorrect: lsGet(LS_KEYS.lifetimeCorrect, 0),
-      perfectSection: lsGet(LS_KEYS.perfectSection, false)
+      perfectSection: lsGet(LS_KEYS.perfectSection, false),
+      mixSessionsCompleted: lsGet(LS_KEYS.mixSessionsCompleted, 0),
+      perfectMixLarge: lsGet(LS_KEYS.perfectMixLarge, false)
     };
   }
 
@@ -506,6 +511,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     lsSet(LS_KEYS.lifetimeAnswered, State.lifetimeAnswered);
     lsSet(LS_KEYS.lifetimeCorrect, State.lifetimeCorrect);
     lsSet(LS_KEYS.perfectSection, State.perfectSection);
+    lsSet(LS_KEYS.mixSessionsCompleted, State.mixSessionsCompleted);
+    lsSet(LS_KEYS.perfectMixLarge, State.perfectMixLarge);
   }
 
   var State = loadState();
@@ -715,7 +722,21 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     { id: "five_strong", name: "Mastery Streak", desc: "Reach Strong mastery in 5 different sections.", icon: "star", test: function () { return countStrongSections() >= 5; } },
     { id: "complete_itn", name: "ITN Explorer", desc: "Attempt every section in ITN.", icon: "map", test: function () { return allSectionsAttempted("itn"); } },
     { id: "complete_srwe", name: "SRWE Explorer", desc: "Attempt every section in SRWE.", icon: "map", test: function () { return allSectionsAttempted("srwe"); } },
-    { id: "complete_ensa", name: "ENSA Explorer", desc: "Attempt every section in ENSA.", icon: "map", test: function () { return allSectionsAttempted("ensa"); } }
+    { id: "complete_ensa", name: "ENSA Explorer", desc: "Attempt every section in ENSA.", icon: "map", test: function () { return allSectionsAttempted("ensa"); } },
+    { id: "all_rounder", name: "All-Rounder", desc: "Attempt every section in every course.", icon: "shield", test: function () { return COURSES.every(function (c) { return allSectionsAttempted(c); }); } },
+    { id: "ten_strong", name: "Mastery Master", desc: "Reach Strong mastery in 10 different sections.", icon: "star", test: function () { return countStrongSections() >= 10; } },
+    { id: "grand_master", name: "Grand Master", desc: "Reach Strong mastery in every section of every course.", icon: "trophy", test: function () { return COURSES.every(function (c) { return DATA[c].sections.every(function (sec) { return masteryTier(getSectionStat(c, sec.id)) === "strong"; }); }); } },
+    { id: "streak_30", name: "Monthly Dedication", desc: "Reach a 30-day study streak.", icon: "flame", test: function () { return State.longStreak >= 30; } },
+    { id: "answered_1000", name: "Thousand Master", desc: "Answer 1000 questions, lifetime.", icon: "book", test: function () { return State.lifetimeAnswered >= 1000; } },
+    { id: "level_5", name: "Rising Star", desc: "Reach Level 5.", icon: "star", test: function () { return levelInfo().level >= 5; } },
+    { id: "level_10", name: "CCNA Veteran", desc: "Reach Level 10.", icon: "trophy", test: function () { return levelInfo().level >= 10; } },
+    { id: "exam_perfect", name: "Perfect Score", desc: "Score 100% on a mock exam.", icon: "target", test: function () { return State.examHistory.some(function (e) { return e.total > 0 && e.score === e.total; }); } },
+    { id: "exam_full", name: "Marathon Runner", desc: "Complete a mock exam covering the full question pool.", icon: "exam", test: function () { return State.examHistory.some(function (e) { return e.total >= buildQuestionPool().length; }); } },
+    { id: "exam_five", name: "Exam Regular", desc: "Complete 5 mock exams.", icon: "trophy", test: function () { return State.examHistory.length >= 5; } },
+    { id: "exam_speed", name: "Speed Demon", desc: "Finish a mock exam of 50 or more questions in under 15 minutes.", icon: "bolt", test: function () { return State.examHistory.some(function (e) { return e.total >= 50 && e.elapsedMs < 15 * 60 * 1000; }); } },
+    { id: "mix_master", name: "Mix Master", desc: "Complete your first Random Mix session.", icon: "bolt", test: function () { return State.mixSessionsCompleted >= 1; } },
+    { id: "mix_marathon", name: "Mix Marathon", desc: "Complete 10 Random Mix sessions.", icon: "bolt", test: function () { return State.mixSessionsCompleted >= 10; } },
+    { id: "flawless_mix", name: "Flawless Mix", desc: "Score 100% on a Random Mix session of 30 or more questions.", icon: "star", test: function () { return State.perfectMixLarge === true; } }
   ];
 
   function checkBadges() {
@@ -1147,8 +1168,10 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var total = Study.order.length;
     if (total > 0 && Study.correctCount === total) {
       State.perfectSection = true;
-      saveState();
+      if (Study.mixed && total >= 30) State.perfectMixLarge = true;
     }
+    if (Study.mixed) State.mixSessionsCompleted += 1;
+    saveState();
     checkBadges();
     navigate("study-summary");
   }
