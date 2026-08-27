@@ -1978,6 +1978,113 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   }
 
   /* =========================================================
+     STATS VIEW
+     ========================================================= */
+  function renderStatsTile(big, lbl, tierClass) {
+    return '<div class="summary-stat"><div class="big' + (tierClass ? " " + tierClass : "") + '">' + big + '</div><div class="lbl">' + esc(lbl) + "</div></div>";
+  }
+
+  function renderStrongWeakList(list, emptyMsg) {
+    if (list.length === 0) return '<p class="muted small">' + esc(emptyMsg) + "</p>";
+    return '<div class="section-list">' + list.map(function (s) {
+      var tier = masteryTier(s.stat);
+      return '<div class="card section-row"><div class="section-row-main">' +
+        '<span class="kind-badge kind-' + s.kind + '">' + s.kind + "</span>" +
+        '<span class="section-title">' + esc(DATA[s.course].title) + " — " + esc(s.title) + "</span>" +
+        "</div><div class=\"section-row-side\">" +
+        '<span class="tier-chip tier-' + tier + '">' + tierLabel(tier) + " &middot; " + s.pct + "%</span>" +
+        "</div></div>";
+    }).join("") + "</div>";
+  }
+
+  function renderStats() {
+    var totalPool = buildQuestionPool().length;
+    var overallPct = State.lifetimeAnswered > 0 ? Math.round(100 * State.lifetimeCorrect / State.lifetimeAnswered) : 0;
+    var missedCount = Object.keys(State.missedQuestions).length;
+
+    var allSectionStats = [];
+    var tierCounts = { strong: 0, developing: 0, weak: 0, notstarted: 0 };
+    COURSES.forEach(function (c) {
+      DATA[c].sections.forEach(function (s) {
+        var stat = getSectionStat(c, s.id);
+        tierCounts[masteryTier(stat)]++;
+        allSectionStats.push({ course: c, sectionId: s.id, title: s.title, kind: s.kind, stat: stat, pct: masteryPct(stat) });
+      });
+    });
+    var sectionsAttempted = allSectionStats.filter(function (s) { return s.stat.attempts > 0; }).length;
+    var qualifyingSections = allSectionStats.filter(function (s) { return s.stat.attempts >= 5; });
+    var strongest = qualifyingSections.slice().sort(function (a, b) { return b.pct - a.pct; }).slice(0, 3);
+    var weakest = qualifyingSections.slice().sort(function (a, b) { return a.pct - b.pct; }).slice(0, 3);
+
+    var courseRows = COURSES.map(function (c) {
+      var secs = DATA[c].sections;
+      var attemptedSecs = secs.filter(function (s) { return getSectionStat(c, s.id).attempts > 0; }).length;
+      var totalAttempts = 0, totalCorrect = 0;
+      secs.forEach(function (s) {
+        var stat = getSectionStat(c, s.id);
+        totalAttempts += stat.attempts;
+        totalCorrect += stat.correct;
+      });
+      var acc = totalAttempts > 0 ? Math.round(100 * totalCorrect / totalAttempts) : 0;
+      return "<tr><td>" + esc(DATA[c].title) + "</td><td>" + attemptedSecs + "/" + secs.length + "</td><td>" + totalAttempts +
+        "</td><td>" + (totalAttempts > 0 ? acc + "%" : "—") + "</td><td>" + courseAvgMastery(c) + "%</td></tr>";
+    }).join("");
+
+    var examCount = State.examHistory.length;
+    var examStatsHtml;
+    if (examCount === 0) {
+      examStatsHtml = '<p class="muted">No mock exams taken yet.</p>';
+    } else {
+      var sumPct = 0, bestPct = 0, totalMs = 0, ccnaSimAttempts = 0, ccnaSimPasses = 0;
+      State.examHistory.forEach(function (e) {
+        var pct = e.total > 0 ? 100 * e.score / e.total : 0;
+        sumPct += pct;
+        if (pct > bestPct) bestPct = pct;
+        totalMs += e.elapsedMs;
+        if (e.kind === "ccna_sim") {
+          ccnaSimAttempts++;
+          if (e.total > 0 && (e.score / e.total) >= CCNA_SIM_PASS_PCT) ccnaSimPasses++;
+        }
+      });
+      examStatsHtml = '<div class="summary-stats">' +
+        renderStatsTile(examCount, "Exams taken") +
+        renderStatsTile(Math.round(sumPct / examCount) + "%", "Average score") +
+        renderStatsTile(Math.round(bestPct) + "%", "Best score") +
+        renderStatsTile(formatDuration(totalMs), "Total exam time") +
+        (ccnaSimAttempts > 0 ? renderStatsTile(ccnaSimPasses + "/" + ccnaSimAttempts, "CCNA Sim passed") : "") +
+        "</div>";
+    }
+
+    return '<div class="view-header"><h2>Stats</h2></div>' +
+      '<div class="card"><h3>Overview</h3><div class="summary-stats">' +
+      renderStatsTile(State.lifetimeAnswered, "Questions answered") +
+      renderStatsTile(overallPct + "%", "Overall accuracy") +
+      renderStatsTile(levelInfo().level, "Level (" + State.xp + " XP)") +
+      renderStatsTile(State.curStreak, "Current streak") +
+      renderStatsTile(State.longStreak, "Longest streak") +
+      renderStatsTile(State.badges.length + "/" + BADGE_DEFS.length, "Badges earned") +
+      renderStatsTile(sectionsAttempted + "/" + allSectionStats.length, "Sections attempted") +
+      renderStatsTile(missedCount, "Questions to review") +
+      "</div></div>" +
+      '<div class="card"><h3>By Course</h3><div class="table-scroll"><table class="review-table"><thead><tr><th>Course</th><th>Sections</th><th>Answered</th><th>Accuracy</th><th>Avg Mastery</th></tr></thead><tbody>' +
+      courseRows + "</tbody></table></div></div>" +
+      '<div class="card"><h3>Mastery Distribution</h3><div class="summary-stats">' +
+      renderStatsTile(tierCounts.strong, "Strong", "tier-strong") +
+      renderStatsTile(tierCounts.developing, "Developing", "tier-developing") +
+      renderStatsTile(tierCounts.weak, "Weak", "tier-weak") +
+      renderStatsTile(tierCounts.notstarted, "Not started", "tier-notstarted") +
+      "</div></div>" +
+      '<div class="dash-grid-2">' +
+      '<div class="card"><h3>Strongest Sections</h3>' + renderStrongWeakList(strongest, "Answer at least 5 questions in a section to see this.") + "</div>" +
+      '<div class="card"><h3>Weakest Sections</h3>' + renderStrongWeakList(weakest, "Answer at least 5 questions in a section to see this.") + "</div>" +
+      "</div>" +
+      '<div class="card"><h3>Mock Exams</h3>' + examStatsHtml + "</div>" +
+      (missedCount > 0
+        ? '<button class="btn btn-primary full-w" onclick="App.startMissedReviewStudy()">Review ' + missedCount + (missedCount === 1 ? " missed question" : " missed questions") + "</button>"
+        : "");
+  }
+
+  /* =========================================================
      STUDY VIEWS
      ========================================================= */
   function renderStudyCoursePick() {
@@ -2214,6 +2321,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<button class="nav-link" data-nav="dashboard" onclick="App.go(\'dashboard\')">' + svgIcon("home") + "<span>Dashboard</span></button>" +
       '<button class="nav-link" data-nav="study" onclick="App.go(\'study\')">' + svgIcon("book") + "<span>Study</span></button>" +
       '<button class="nav-link" data-nav="exam" onclick="App.go(\'exam\')">' + svgIcon("exam") + "<span>Mock Exam</span></button>" +
+      '<button class="nav-link" data-nav="stats" onclick="App.navigate(\'stats\')">' + svgIcon("target") + "<span>Stats</span></button>" +
       '<div class="nav-spacer"></div>' +
       '<div id="navQuickStats" class="nav-quick-stats"></div>' +
       '<button class="nav-link account-link" onclick="App.openAccount()">' + svgIcon("user") + '<span id="navAccountLabel">Login</span></button>' +
@@ -2230,6 +2338,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var group = "dashboard";
     if (name.indexOf("study") === 0) group = "study";
     if (name.indexOf("exam") === 0) group = "exam";
+    if (name === "stats") group = "stats";
     var links = document.querySelectorAll(".nav-link[data-nav]");
     for (var i = 0; i < links.length; i++) {
       links[i].classList.toggle("active", links[i].getAttribute("data-nav") === group);
@@ -2288,6 +2397,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var html;
     switch (Router.current.name) {
       case "dashboard": html = renderDashboard(); break;
+      case "stats": html = renderStats(); break;
       case "study-course": html = renderStudyCoursePick(); break;
       case "study-section": html = renderStudySectionPick(Router.current.params.course); break;
       case "study-question": html = renderStudyQuestionView(); break;
