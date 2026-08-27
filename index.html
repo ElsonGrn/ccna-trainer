@@ -178,6 +178,19 @@
   .banner-countdown-text strong { font-size:1.05rem; }
   .banner-countdown-text span { font-size:0.82rem; color: rgba(234,242,247,0.7); }
 
+  .banner-login { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    background: var(--cisco-blue-light); border: 1px solid rgba(4,159,217,0.3); border-radius: var(--radius); padding: 14px 20px; margin-bottom:16px; }
+  .banner-login-text { display:flex; align-items:center; gap:10px; color: var(--cisco-blue-dark); font-weight:700; font-size:0.9rem; }
+  .banner-login-text .icon { width:18px; height:18px; flex-shrink:0; }
+
+  .account-link span { max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .account-email { display:flex; align-items:center; gap:8px; font-weight:700; color: var(--navy-800); }
+  .account-email .icon { color: var(--cisco-blue); }
+  .account-divider { height:1px; background: var(--border); margin: 6px 0; }
+  .account-error { background: var(--red-bg); color: var(--red); padding:10px 12px; border-radius: var(--radius-sm); font-size:0.85rem; font-weight:600; }
+  .account-switch { font-size:0.85rem; color: var(--text-muted); text-align:center; }
+  .acct-field { margin: 0; }
+
   /* ============ DASHBOARD GRIDS ============ */
   .dash-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; }
   .dash-grid-2 { display:grid; grid-template-columns: 2fr 1fr; gap:16px; }
@@ -517,7 +530,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     };
   }
 
-  function saveState() {
+  function saveState(skipSync) {
     lsSet(LS_KEYS.xp, State.xp);
     lsSet(LS_KEYS.lastActive, State.lastActive);
     lsSet(LS_KEYS.curStreak, State.curStreak);
@@ -531,9 +544,70 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     lsSet(LS_KEYS.perfectSection, State.perfectSection);
     lsSet(LS_KEYS.mixSessionsCompleted, State.mixSessionsCompleted);
     lsSet(LS_KEYS.perfectMixLarge, State.perfectMixLarge);
+    if (!skipSync) scheduleSync();
   }
 
   var State = loadState();
+
+  /* =========================================================
+     ACCOUNT (optional login — progress lives in localStorage
+     either way; logging in additionally syncs it to the server
+     so it's available on other devices). Auth keys are stored
+     separately from LS_KEYS/ALL_LS_KEYS on purpose, so "Reset
+     all progress" (which wipes ALL_LS_KEYS) never logs you out.
+     ========================================================= */
+  var API_BASE = "https://ccna-api.estmain.net";
+  var AUTH_TOKEN_KEY = LS_PREFIX + "authToken";
+  var AUTH_EMAIL_KEY = LS_PREFIX + "authEmail";
+  var Account = { token: lsGet(AUTH_TOKEN_KEY, null), email: lsGet(AUTH_EMAIL_KEY, null) };
+  var AccountUI = { mode: "login", error: null, busy: false };
+  var syncTimer = null;
+
+  function isLoggedIn() { return !!Account.token; }
+
+  function persistAccount() {
+    lsSet(AUTH_TOKEN_KEY, Account.token);
+    lsSet(AUTH_EMAIL_KEY, Account.email);
+  }
+
+  function apiFetch(path, opts) {
+    opts = opts || {};
+    var headers = { "Content-Type": "application/json" };
+    if (Account.token) headers["Authorization"] = "Bearer " + Account.token;
+    return fetch(API_BASE + path, {
+      method: opts.method || "GET",
+      headers: headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        if (!res.ok) throw new Error(data.error || "Request failed (" + res.status + ")");
+        return data;
+      });
+    });
+  }
+
+  function scheduleSync() {
+    if (!isLoggedIn()) return;
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = setTimeout(pushStateToServer, 1500);
+  }
+
+  function pushStateToServer() {
+    if (!isLoggedIn()) return;
+    apiFetch("/api/state", { method: "PUT", body: { state: State } }).catch(function () {
+      // Best-effort sync -- a transient failure here shouldn't interrupt studying.
+      // The next saveState() call will schedule another attempt.
+    });
+  }
+
+  function applyServerState(serverState) {
+    var merged = defaultState();
+    Object.keys(merged).forEach(function (k) {
+      if (serverState && Object.prototype.hasOwnProperty.call(serverState, k)) merged[k] = serverState[k];
+    });
+    State = merged;
+    saveState(true);
+  }
 
   /* =========================================================
      SMALL UTILITIES
@@ -603,7 +677,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     home: '<path d="M4 11L12 4l8 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9h12v-9" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
     exam: '<rect x="6" y="4" width="12" height="17" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><rect x="9" y="2.5" width="6" height="3" rx="1" fill="currentColor"/><path d="M9 13l2 2 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
     target: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
-    bolt: '<path d="M13 2L4 14h6l-1 8 9-12h-6l1-8Z" fill="currentColor"/>'
+    bolt: '<path d="M13 2L4 14h6l-1 8 9-12h-6l1-8Z" fill="currentColor"/>',
+    user: '<circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21c0-4.5 3.6-7 8-7s8 2.5 8 7" fill="currentColor"/>'
   };
   function svgIcon(name, cls) {
     var c = cls ? " " + cls : "";
@@ -1484,10 +1559,12 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     return '<div class="modal">' +
       '<div class="modal-head"><h3>Settings</h3><button class="icon-btn" aria-label="Close" onclick="App.closeModal()">' + svgIcon("close") + '</button></div>' +
       '<div class="modal-body">' +
-      '<p class="muted">CCNA Trainer stores all your progress locally in this browser only (localStorage). Nothing is uploaded anywhere.</p>' +
+      '<p class="muted">' + (isLoggedIn()
+        ? "CCNA Trainer stores your progress locally in this browser and syncs it to your account (" + esc(Account.email) + ")."
+        : "CCNA Trainer stores all your progress locally in this browser only (localStorage). Nothing is uploaded anywhere unless you log in.") + "</p>" +
       (!confirming
         ? '<button class="btn btn-danger" onclick="App.confirmResetStep()">Reset all progress</button>'
-        : '<div class="confirm-box"><p><strong>Are you sure?</strong> This permanently erases your XP, streaks, mastery stats, badges, and exam history on this device.</p>' +
+        : '<div class="confirm-box"><p><strong>Are you sure?</strong> This permanently erases your XP, streaks, mastery stats, badges, and exam history' + (isLoggedIn() ? " — on this device and in your account" : " on this device") + '.</p>' +
           '<div class="btn-row"><button class="btn btn-secondary" onclick="App.cancelResetStep()">Cancel</button>' +
           '<button class="btn btn-danger" onclick="App.doReset()">Yes, erase everything</button></div></div>') +
       "</div></div>";
@@ -1501,9 +1578,139 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     State = defaultState();
     clearExamTimer();
     Study = null; Exam = null; ExamResult = null; Mode = null;
+    if (isLoggedIn()) pushStateToServer();
     closeModal();
     navigate("dashboard");
     showToast("Progress reset", "Starting fresh — good luck!", "info");
+  }
+
+  /* =========================================================
+     ACCOUNT MODAL (login / register / logged-in panel)
+     ========================================================= */
+  function openAccount() {
+    AccountUI = { mode: "login", error: null, busy: false };
+    renderModal(accountModalHTML());
+  }
+
+  function switchAccountMode(mode) {
+    AccountUI.mode = mode;
+    AccountUI.error = null;
+    renderModal(accountModalHTML());
+  }
+
+  function accountModalHTML() {
+    if (isLoggedIn()) {
+      return '<div class="modal">' +
+        '<div class="modal-head"><h3>Account</h3><button class="icon-btn" aria-label="Close" onclick="App.closeModal()">' + svgIcon("close") + '</button></div>' +
+        '<div class="modal-body">' +
+        '<p class="account-email">' + svgIcon("user") + " " + esc(Account.email) + "</p>" +
+        '<p class="muted">Your progress is synced to this account and available on any device you log into.</p>' +
+        '<button class="btn btn-secondary full-w" onclick="App.logoutAccount()">Log out</button>' +
+        '<div class="account-divider"></div>' +
+        '<h4>Change Password</h4>' +
+        (AccountUI.error ? '<p class="account-error">' + esc(AccountUI.error) + "</p>" : "") +
+        '<input class="blank-input acct-field" type="password" id="acctOldPw" placeholder="Current password" autocomplete="current-password">' +
+        '<input class="blank-input acct-field" type="password" id="acctNewPw" placeholder="New password (min 8 characters)" autocomplete="new-password">' +
+        '<button class="btn btn-primary full-w" ' + (AccountUI.busy ? "disabled" : "") + ' onclick="App.submitChangePassword()">' + (AccountUI.busy ? "Saving…" : "Update Password") + "</button>" +
+        "</div></div>";
+    }
+    var isRegister = AccountUI.mode === "register";
+    return '<div class="modal">' +
+      '<div class="modal-head"><h3>' + (isRegister ? "Create Account" : "Log In") + '</h3><button class="icon-btn" aria-label="Close" onclick="App.closeModal()">' + svgIcon("close") + '</button></div>' +
+      '<div class="modal-body">' +
+      '<p class="muted">Login to track your progress across devices. This is optional — without an account, your progress still saves in this browser, it just won\'t follow you anywhere else.</p>' +
+      (AccountUI.error ? '<p class="account-error">' + esc(AccountUI.error) + "</p>" : "") +
+      '<input class="blank-input acct-field" type="email" id="acctEmail" placeholder="Email" autocomplete="email">' +
+      '<input class="blank-input acct-field" type="password" id="acctPassword" placeholder="Password (min 8 characters)" autocomplete="' + (isRegister ? "new-password" : "current-password") + '">' +
+      '<button class="btn btn-primary full-w" ' + (AccountUI.busy ? "disabled" : "") + ' onclick="App.' + (isRegister ? "submitRegister" : "submitLogin") + '()">' +
+      (AccountUI.busy ? "Please wait…" : (isRegister ? "Create Account" : "Log In")) + "</button>" +
+      (isRegister
+        ? '<p class="account-switch">Already have an account? <button class="link-btn" onclick="App.switchAccountMode(\'login\')">Log in</button></p>'
+        : '<p class="account-switch">No account yet? <button class="link-btn" onclick="App.switchAccountMode(\'register\')">Create one</button></p>') +
+      "</div></div>";
+  }
+
+  function readAccountForm() {
+    var email = (document.getElementById("acctEmail") || {}).value || "";
+    var password = (document.getElementById("acctPassword") || {}).value || "";
+    return { email: email.trim(), password: password };
+  }
+
+  function submitRegister() {
+    var f = readAccountForm();
+    if (!f.email || f.password.length < 8) {
+      AccountUI.error = "Please enter a valid email and a password of at least 8 characters.";
+      renderModal(accountModalHTML());
+      return;
+    }
+    AccountUI.busy = true; AccountUI.error = null;
+    renderModal(accountModalHTML());
+    var localHasProgress = State.lifetimeAnswered > 0 || State.xp > 0;
+    apiFetch("/api/register", { method: "POST", body: { email: f.email, password: f.password, state: localHasProgress ? State : {} } })
+      .then(function (resp) { onAuthSuccess(resp, localHasProgress ? "This device's existing progress is now saved to your new account." : "Your account is ready."); })
+      .catch(function (e) { AccountUI.busy = false; AccountUI.error = e.message; renderModal(accountModalHTML()); });
+  }
+
+  function submitLogin() {
+    var f = readAccountForm();
+    if (!f.email || !f.password) {
+      AccountUI.error = "Please enter your email and password.";
+      renderModal(accountModalHTML());
+      return;
+    }
+    AccountUI.busy = true; AccountUI.error = null;
+    renderModal(accountModalHTML());
+    apiFetch("/api/login", { method: "POST", body: { email: f.email, password: f.password } })
+      .then(function (resp) { onAuthSuccess(resp, "Welcome back — your progress has been loaded."); })
+      .catch(function (e) { AccountUI.busy = false; AccountUI.error = e.message; renderModal(accountModalHTML()); });
+  }
+
+  function onAuthSuccess(resp, toastMsg) {
+    Account.token = resp.token;
+    Account.email = resp.email;
+    persistAccount();
+    var serverState = resp.state || {};
+    var serverHasProgress = (serverState.lifetimeAnswered || 0) > 0 || (serverState.xp || 0) > 0;
+    var localHasProgress = State.lifetimeAnswered > 0 || State.xp > 0;
+    if (serverHasProgress) {
+      applyServerState(serverState);
+    } else if (localHasProgress) {
+      pushStateToServer();
+    }
+    AccountUI = { mode: "login", error: null, busy: false };
+    closeModal();
+    updateNavAccountLabel();
+    navigate("dashboard");
+    showToast("Logged in", toastMsg, "info");
+  }
+
+  function logoutAccount() {
+    Account.token = null;
+    Account.email = null;
+    persistAccount();
+    if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }
+    closeModal();
+    updateNavAccountLabel();
+    showToast("Logged out", "Your progress stays saved on this device.", "info");
+  }
+
+  function submitChangePassword() {
+    var oldPw = (document.getElementById("acctOldPw") || {}).value || "";
+    var newPw = (document.getElementById("acctNewPw") || {}).value || "";
+    if (newPw.length < 8) {
+      AccountUI.error = "New password must be at least 8 characters.";
+      renderModal(accountModalHTML());
+      return;
+    }
+    AccountUI.busy = true; AccountUI.error = null;
+    renderModal(accountModalHTML());
+    apiFetch("/api/change-password", { method: "POST", body: { oldPassword: oldPw, newPassword: newPw } })
+      .then(function () {
+        AccountUI.busy = false;
+        closeModal();
+        showToast("Password updated", "", "info");
+      })
+      .catch(function (e) { AccountUI.busy = false; AccountUI.error = e.message; renderModal(accountModalHTML()); });
   }
 
   /* =========================================================
@@ -1614,8 +1821,15 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     }).join("") + "</div>";
   }
 
+  function renderLoginBanner() {
+    if (isLoggedIn()) return "";
+    return '<div class="banner-login"><div class="banner-login-text">' + svgIcon("user") +
+      "<span>Login to track your progress across devices.</span></div>" +
+      '<button class="btn btn-primary btn-sm" onclick="App.openAccount()">Login</button></div>';
+  }
+
   function renderDashboard() {
-    return renderCountdownBanner() +
+    return renderLoginBanner() + renderCountdownBanner() +
       '<div class="dash-grid">' +
       '<div class="card stat-card">' + renderStreakBlock() + "</div>" +
       '<div class="card stat-card">' + renderXPBlock() + "</div>" +
@@ -1854,9 +2068,11 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<button class="nav-link" data-nav="exam" onclick="App.go(\'exam\')">' + svgIcon("exam") + "<span>Mock Exam</span></button>" +
       '<div class="nav-spacer"></div>' +
       '<div id="navQuickStats" class="nav-quick-stats"></div>' +
+      '<button class="nav-link account-link" onclick="App.openAccount()">' + svgIcon("user") + '<span id="navAccountLabel">Login</span></button>' +
       '<button class="nav-link settings-link" onclick="App.openSettings()">' + svgIcon("gear") + "<span>Settings</span></button>" +
       "</nav>" +
       '<main id="mainArea"><div id="view"></div></main>';
+    updateNavAccountLabel();
   }
 
   function updateNavActive() {
@@ -1868,6 +2084,12 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     for (var i = 0; i < links.length; i++) {
       links[i].classList.toggle("active", links[i].getAttribute("data-nav") === group);
     }
+  }
+
+  function updateNavAccountLabel() {
+    var el = document.getElementById("navAccountLabel");
+    if (!el) return;
+    el.textContent = isLoggedIn() ? Account.email : "Login";
   }
 
   function updateNavQuickStats() {
@@ -1930,6 +2152,12 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     confirmSubmitExam: confirmSubmitExam,
     submitExam: submitExam,
     openSettings: openSettings,
+    openAccount: openAccount,
+    switchAccountMode: switchAccountMode,
+    submitLogin: submitLogin,
+    submitRegister: submitRegister,
+    submitChangePassword: submitChangePassword,
+    logoutAccount: logoutAccount,
     confirmResetStep: confirmResetStep,
     cancelResetStep: cancelResetStep,
     doReset: doReset,
