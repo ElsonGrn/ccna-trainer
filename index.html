@@ -339,6 +339,24 @@
   .summary-stat .lbl { font-size:0.78rem; color: var(--text-muted); font-weight:600; }
 
   /* ============ EXAM ============ */
+  .ccna-sim-card { display:flex; flex-direction:column; gap:6px; text-align:left; border:none; margin-bottom:16px;
+    background: linear-gradient(120deg, #7a3fc9, #4f2087); color:#fff;
+    transition: transform 0.12s ease, box-shadow 0.12s ease; }
+  .ccna-sim-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .ccna-sim-title { display:flex; align-items:center; gap:8px; font-weight:800; font-size:1.05rem; }
+  .ccna-sim-title .icon { color:#fff; }
+  .ccna-sim-desc { font-size:0.82rem; opacity:0.92; line-height:1.5; }
+  .exam-timer { display:inline-flex; align-items:center; gap:4px; font-size:0.78rem; font-weight:800; padding:4px 10px; border-radius:20px; background: var(--cisco-blue-light); color: var(--cisco-blue-dark); }
+  .exam-timer .icon { width:14px; height:14px; }
+  .exam-timer.low { background: var(--red-bg); color: var(--red); }
+  .ccna-sim-result { text-align:center; }
+  .ccna-sim-result-title { display:flex; align-items:center; justify-content:center; gap:8px; font-size:1.3rem; font-weight:900; }
+  .ccna-sim-result-desc { font-size:0.85rem; color: var(--text-muted); margin-top:4px; }
+  .ccna-sim-result.pass { background: var(--green-bg); }
+  .ccna-sim-result.pass .ccna-sim-result-title { color: var(--green); }
+  .ccna-sim-result.fail { background: var(--red-bg); }
+  .ccna-sim-result.fail .ccna-sim-result-title { color: var(--red); }
+
   .exam-len-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:16px; }
   .exam-len-card { text-align:center; display:flex; flex-direction:column; gap:4px; align-items:center; padding:26px 16px; border:1px solid var(--border); transition: transform 0.12s ease, box-shadow 0.12s ease; }
   .exam-len-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--cisco-blue); }
@@ -736,7 +754,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     { id: "exam_speed", name: "Speed Demon", desc: "Finish a mock exam of 50 or more questions in under 15 minutes.", icon: "bolt", test: function () { return State.examHistory.some(function (e) { return e.total >= 50 && e.elapsedMs < 15 * 60 * 1000; }); } },
     { id: "mix_master", name: "Mix Master", desc: "Complete your first Random Mix session.", icon: "bolt", test: function () { return State.mixSessionsCompleted >= 1; } },
     { id: "mix_marathon", name: "Mix Marathon", desc: "Complete 10 Random Mix sessions.", icon: "bolt", test: function () { return State.mixSessionsCompleted >= 10; } },
-    { id: "flawless_mix", name: "Flawless Mix", desc: "Score 100% on a Random Mix session of 30 or more questions.", icon: "star", test: function () { return State.perfectMixLarge === true; } }
+    { id: "flawless_mix", name: "Flawless Mix", desc: "Score 100% on a Random Mix session of 30 or more questions.", icon: "star", test: function () { return State.perfectMixLarge === true; } },
+    { id: "you_passed", name: "You Passed", desc: "Score 70% or higher on the CCNA Certification Simulation (120 questions, 150 minutes, official exam blueprint weighting) — the real exam's passing bar.", icon: "trophy", test: function () { return State.examHistory.some(function (e) { return e.kind === "ccna_sim" && e.total > 0 && (e.score / e.total) >= CCNA_SIM_PASS_PCT; }); } }
   ];
 
   function checkBadges() {
@@ -813,6 +832,101 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   }
 
   /* =========================================================
+     CCNA CERTIFICATION SIMULATION
+     120 questions, 150 minutes, sampled proportionally across
+     the official CCNA 200-301 v1.1 exam blueprint domains and
+     their published weights (Cisco, 2024). Every module and
+     checkpoint section (not the cumulative practice/final exam
+     sections, which already span everything) is mapped to the
+     single blueprint domain its content most closely matches.
+     ========================================================= */
+  var CCNA_SIM_LENGTH = 120;
+  var CCNA_SIM_TIME_LIMIT_MS = 150 * 60 * 1000;
+  var CCNA_SIM_PASS_PCT = 0.7;
+
+  var BLUEPRINT_DOMAINS = [
+    { id: "netfund", name: "1.0 Network Fundamentals", weight: 0.2 },
+    { id: "netaccess", name: "2.0 Network Access", weight: 0.2 },
+    { id: "ipconn", name: "3.0 IP Connectivity", weight: 0.25 },
+    { id: "ipsvc", name: "4.0 IP Services", weight: 0.1 },
+    { id: "secfund", name: "5.0 Security Fundamentals", weight: 0.15 },
+    { id: "automation", name: "6.0 Automation and Programmability", weight: 0.1 }
+  ];
+
+  var SECTION_DOMAIN = {
+    "itn-m01": "netfund", "itn-m02": "netfund", "itn-m03": "netfund", "itn-cp1": "netfund",
+    "itn-m04": "netfund", "itn-m05": "netfund", "itn-m06": "netfund", "itn-m07": "netfund", "itn-cp2": "netfund",
+    "itn-m08": "ipconn", "itn-m09": "netfund", "itn-m10": "ipconn", "itn-cp3": "ipconn",
+    "itn-m11": "netfund", "itn-m12": "netfund", "itn-m13": "netfund", "itn-cp4": "netfund",
+    "itn-m14": "netfund", "itn-m15": "ipsvc", "itn-cp5": "ipsvc",
+    "itn-m16": "secfund", "itn-m17": "netfund", "itn-cp6": "secfund",
+
+    "srwe-m01": "netaccess", "srwe-m02": "netfund", "srwe-m03": "netaccess", "srwe-m04": "netaccess", "srwe-cp1": "netaccess",
+    "srwe-m05": "netaccess", "srwe-m06": "netaccess", "srwe-cp2": "netaccess",
+    "srwe-m07": "ipsvc", "srwe-m08": "ipsvc", "srwe-m09": "ipconn", "srwe-cp3": "ipsvc",
+    "srwe-m10": "secfund", "srwe-m11": "secfund", "srwe-m12": "netaccess", "srwe-m13": "netaccess", "srwe-cp4": "secfund",
+    "srwe-m14": "ipconn", "srwe-m15": "ipconn", "srwe-m16": "ipconn", "srwe-cp5": "ipconn",
+
+    "ensa-m01": "ipconn", "ensa-m02": "ipconn", "ensa-cp1": "ipconn",
+    "ensa-m03": "secfund", "ensa-m04": "secfund", "ensa-m05": "secfund", "ensa-cp2": "secfund",
+    "ensa-m06": "ipsvc", "ensa-m07": "netfund", "ensa-m08": "secfund", "ensa-cp3": "secfund",
+    "ensa-m09": "ipsvc", "ensa-m10": "ipsvc", "ensa-m11": "netfund", "ensa-m12": "ipconn", "ensa-cp4": "ipsvc",
+    "ensa-m13": "netfund", "ensa-m14": "automation", "ensa-cp5": "automation"
+  };
+
+  function buildBlueprintPool() {
+    var pool = [];
+    COURSES.forEach(function (course) {
+      DATA[course].sections.forEach(function (sec) {
+        if (sec.kind === "exam") return;
+        var domain = SECTION_DOMAIN[sec.id];
+        if (!domain) return;
+        sec.questions.forEach(function (q) {
+          pool.push({ course: course, sectionId: sec.id, sectionTitle: sec.title, kind: sec.kind, domain: domain, q: q });
+        });
+      });
+    });
+    return pool;
+  }
+
+  function sampleCcnaSimExam() {
+    var pool = buildBlueprintPool();
+    var byDomain = {};
+    BLUEPRINT_DOMAINS.forEach(function (d) { byDomain[d.id] = shuffleArr(pool.filter(function (item) { return item.domain === d.id; })); });
+
+    var desired = {};
+    var assigned = 0;
+    BLUEPRINT_DOMAINS.forEach(function (d) {
+      desired[d.id] = Math.round(d.weight * CCNA_SIM_LENGTH);
+      assigned += desired[d.id];
+    });
+    var diff = CCNA_SIM_LENGTH - assigned;
+    var guard = 0;
+    while (diff !== 0 && guard < 1000) {
+      var d2 = BLUEPRINT_DOMAINS[guard % BLUEPRINT_DOMAINS.length].id;
+      if (diff > 0) { desired[d2] += 1; diff -= 1; }
+      else if (desired[d2] > 0) { desired[d2] -= 1; diff += 1; }
+      guard++;
+    }
+    var deficit = 0;
+    BLUEPRINT_DOMAINS.forEach(function (d) {
+      if (desired[d.id] > byDomain[d.id].length) { deficit += desired[d.id] - byDomain[d.id].length; desired[d.id] = byDomain[d.id].length; }
+    });
+    var safety = 0;
+    while (deficit > 0 && safety < 1000) {
+      var spare = BLUEPRINT_DOMAINS.filter(function (d) { return byDomain[d.id].length > desired[d.id]; });
+      if (spare.length === 0) break;
+      var pick = spare[safety % spare.length].id;
+      desired[pick] += 1;
+      deficit -= 1;
+      safety++;
+    }
+    var result = [];
+    BLUEPRINT_DOMAINS.forEach(function (d) { result = result.concat(byDomain[d.id].slice(0, desired[d.id])); });
+    return shuffleArr(result);
+  }
+
+  /* =========================================================
      ANSWER EVALUATION (generic across all 5 question types)
      ========================================================= */
   function isAnswerNonEmpty(q, val) {
@@ -861,6 +975,11 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   var Study = null;
   var Exam = null;
   var ExamResult = null;
+  var examTimerHandle = null;
+
+  function clearExamTimer() {
+    if (examTimerHandle) { clearInterval(examTimerHandle); examTimerHandle = null; }
+  }
 
   function navigate(name, params) {
     Router.current = { name: name, params: params || {} };
@@ -1191,6 +1310,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
      MOCK EXAM MODE
      ========================================================= */
   function startExam(len) {
+    clearExamTimer();
     var items = sampleExamQuestions(len);
     Exam = {
       requested: len,
@@ -1202,6 +1322,33 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     };
     ExamResult = null;
     navigate("exam-question");
+  }
+
+  function startCcnaSimExam() {
+    clearExamTimer();
+    var items = sampleCcnaSimExam();
+    Exam = {
+      requested: "ccna_sim",
+      items: items,
+      answers: items.map(function () { return { answered: false, flagged: false, userAnswer: null, matchRightOrder: null, matchPairing: {}, activeLeft: null }; }),
+      idx: 0,
+      startTime: Date.now(),
+      finished: false,
+      isCcnaSim: true,
+      deadline: Date.now() + CCNA_SIM_TIME_LIMIT_MS
+    };
+    ExamResult = null;
+    examTimerHandle = setInterval(examTimerTick, 1000);
+    navigate("exam-question");
+  }
+
+  function examTimerTick() {
+    if (!Exam || Exam.finished || !Exam.deadline) { clearExamTimer(); return; }
+    if (Exam.deadline - Date.now() <= 0) {
+      submitExam();
+      return;
+    }
+    if (Router.current.name === "exam-question" || Router.current.name === "exam-review") render();
   }
 
   function prevExamQuestion() { if (Exam && Exam.idx > 0) { Exam.idx--; render(); } }
@@ -1228,6 +1375,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   }
 
   function submitExam() {
+    clearExamTimer();
     closeModal();
     var endTime = Date.now();
     var elapsedMs = endTime - Exam.startTime;
@@ -1256,7 +1404,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     if (xpGain > 0) addXP(xpGain);
     touchActivity();
 
-    var record = { date: todayISO(), timestamp: endTime, length: Exam.items.length, score: correctCount, total: Exam.items.length, elapsedMs: elapsedMs };
+    var record = { date: todayISO(), timestamp: endTime, length: Exam.items.length, score: correctCount, total: Exam.items.length, elapsedMs: elapsedMs, kind: Exam.isCcnaSim ? "ccna_sim" : "practice" };
     State.examHistory.push(record);
     if (State.examHistory.length > 50) State.examHistory = State.examHistory.slice(-50);
     saveState();
@@ -1335,6 +1483,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       delete memStore[k];
     });
     State = defaultState();
+    clearExamTimer();
     Study = null; Exam = null; ExamResult = null; Mode = null;
     closeModal();
     navigate("dashboard");
@@ -1567,7 +1716,14 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var total = pool.length;
     var opts = [20, 50, 100];
     return '<div class="view-header"><h2>Mock Exam</h2></div>' +
-      '<p class="muted">Choose a length. Questions are drawn randomly but proportionally across ITN, SRWE, and ENSA — approximating the real exam\'s mixed blueprint. No timer, but we\'ll track how long you take.</p>' +
+      '<button class="card ccna-sim-card full-w" onclick="App.startCcnaSimExam()">' +
+      '<div class="ccna-sim-title">' + svgIcon("trophy") + " CCNA Certification Simulation</div>" +
+      '<div class="ccna-sim-desc">' + CCNA_SIM_LENGTH + " questions in " + Math.round(CCNA_SIM_TIME_LIMIT_MS / 60000) +
+      " minutes, sampled proportionally across the official CCNA 200-301 v1.1 exam blueprint (" +
+      BLUEPRINT_DOMAINS.map(function (d) { return Math.round(d.weight * 100) + "% " + d.name.replace(/^[0-9.]+\s*/, ""); }).join(", ") +
+      "). Auto-submits when time runs out. Score " + Math.round(CCNA_SIM_PASS_PCT * 100) + "%+ — the real exam's passing bar — to earn the <strong>You Passed</strong> badge.</div>" +
+      "</button>" +
+      '<p class="muted">Or choose a length for an untimed practice exam. Questions are drawn randomly but proportionally across ITN, SRWE, and ENSA — approximating the real exam\'s mixed blueprint. No timer, but we\'ll track how long you take.</p>' +
       '<div class="exam-len-grid">' +
       opts.map(function (n) {
         return '<button class="card exam-len-card" onclick="App.startExam(' + n + ')"><div class="exam-len-num">' + Math.min(n, total) + '</div><div class="exam-len-lbl">Questions</div></button>';
@@ -1577,6 +1733,12 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       (total < 20 ? '<p class="muted small">Note: the current question pool has only ' + total + " questions, so shorter lengths may return fewer questions than requested.</p>" : "");
   }
 
+  function renderExamTimerBadge() {
+    if (!Exam || !Exam.deadline) return "";
+    var remaining = Math.max(0, Exam.deadline - Date.now());
+    return '<span class="exam-timer' + (remaining < 5 * 60 * 1000 ? " low" : "") + '">' + svgIcon("bolt") + " " + formatDuration(remaining) + " left</span>";
+  }
+
   function renderExamQuestionView() {
     if (!Exam) return renderExamSetup();
     var item = Exam.items[Exam.idx];
@@ -1584,7 +1746,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var ans = Exam.answers[Exam.idx];
     var num = Exam.idx + 1, total = Exam.items.length;
     return '<div class="exam-layout"><div class="exam-main">' +
-      '<div class="view-header"><h2>Mock Exam</h2><span class="kind-badge kind-' + item.kind + '">' + esc(item.sectionTitle) + "</span></div>" +
+      '<div class="view-header"><h2>' + (Exam.isCcnaSim ? "CCNA Certification Simulation" : "Mock Exam") + '</h2><span class="kind-badge kind-' + item.kind + '">' + esc(item.sectionTitle) + "</span>" + renderExamTimerBadge() + "</div>" +
       '<div class="q-progress-label">Question ' + num + " of " + total + "</div>" +
       '<div class="card question-card">' +
       renderQuestionPrompt(q) +
@@ -1614,7 +1776,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     if (!Exam) return renderExamSetup();
     var answeredCount = Exam.answers.filter(function (a) { return a.answered; }).length;
     var flaggedCount = Exam.answers.filter(function (a) { return a.flagged; }).length;
-    return '<div class="view-header"><h2>Review Your Answers</h2></div>' +
+    return '<div class="view-header"><h2>Review Your Answers</h2>' + renderExamTimerBadge() + "</div>" +
       '<p class="muted">' + answeredCount + " of " + Exam.items.length + " answered" + (flaggedCount ? ", " + flaggedCount + " flagged" : "") + ". You can jump back to any question before submitting.</p>" +
       '<div class="card table-scroll"><table class="review-table"><thead><tr><th>#</th><th>Section</th><th>Status</th><th>Flag</th><th></th></tr></thead><tbody>' +
       Exam.items.map(function (it, i) {
@@ -1642,7 +1804,14 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       return "<tr><td>" + esc(DATA[s.course].title) + "</td><td>" + esc(s.title) + "</td><td>" + s.correct + "/" + s.attempts + "</td><td>" + p + "%</td></tr>";
     }).join("");
     var resultClass = pct >= 80 ? "result-correct" : (pct < 60 ? "result-incorrect" : "");
-    return '<div class="view-header"><h2>Exam Results</h2></div>' +
+    var isCcnaSim = record.kind === "ccna_sim";
+    var passed = pct >= Math.round(CCNA_SIM_PASS_PCT * 100);
+    return '<div class="view-header"><h2>' + (isCcnaSim ? "CCNA Certification Simulation Results" : "Exam Results") + "</h2></div>" +
+      (isCcnaSim
+        ? '<div class="card ccna-sim-result ' + (passed ? "pass" : "fail") + '"><div class="ccna-sim-result-title">' +
+          (passed ? svgIcon("trophy") + " You Passed!" : svgIcon("close") + " Not Passed") + "</div><div class=\"ccna-sim-result-desc\">" +
+          Math.round(CCNA_SIM_PASS_PCT * 100) + "% required, like the real exam.</div></div>"
+        : "") +
       '<div class="card results-summary ' + resultClass + '"><div class="results-score">' + record.score + "/" + record.total + '</div><div class="results-pct">' + pct + '%</div>' +
       '<div class="results-meta">Time taken: ' + formatDuration(record.elapsedMs) + " &middot; " + esc(record.date) + "</div></div>" +
       (newBadges && newBadges.length
@@ -1735,6 +1904,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     matchClickLeft: matchClickLeft,
     matchClickRight: matchClickRight,
     startExam: startExam,
+    startCcnaSimExam: startCcnaSimExam,
     prevExamQuestion: prevExamQuestion,
     nextExamQuestion: nextExamQuestion,
     jumpExam: jumpExam,
