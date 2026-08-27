@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CCNA Trainer — 200-301 Exam Prep</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23049fd9'/%3E%3Ctext x='12' y='16.5' font-size='11' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EC%3C/text%3E%3C/svg%3E">
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem("ccnaTrainer.theme");
+    var theme = saved ? JSON.parse(saved) : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
+  } catch (e) { /* localStorage/matchMedia unavailable -- default to light, harmless */ }
+})();
+</script>
 <style>
   /* ============ RESET & BASE ============ */
   *, *::before, *::after { box-sizing: border-box; }
@@ -41,16 +50,40 @@
     --red-bg: #fdecec;
     --gray: #8695a4;
     --gray-bg: #eef1f4;
+    --gray-bg-hover: #e1e7ec;
+    --purple: #7a3fc9;
+    --purple-bg: #f1e6fb;
     --bg: #f2f5f8;
     --card-bg: #ffffff;
     --text-main: #16293b;
     --text-muted: #5c6b7a;
     --text-inverse: #eaf2f7;
     --border: #e1e8ee;
+    --heading: var(--navy-800);
     --radius: 14px;
     --radius-sm: 9px;
     --shadow: 0 2px 10px rgba(13,27,42,0.07);
     --shadow-lg: 0 12px 32px rgba(13,27,42,0.18);
+  }
+
+  html[data-theme="dark"] {
+    --cisco-blue-light: rgba(4,159,217,0.16);
+    --cisco-blue-dark: #5ec2e8;
+    --green-bg: rgba(30,164,92,0.16);
+    --yellow-bg: rgba(201,138,18,0.18);
+    --red-bg: rgba(214,69,69,0.18);
+    --purple: #c3a1f0;
+    --purple-bg: rgba(122,63,201,0.22);
+    --gray-bg: #23303d;
+    --gray-bg-hover: #2d3f4f;
+    --bg: #0f1a24;
+    --card-bg: #182635;
+    --text-main: #dbe6ee;
+    --text-muted: #8fa0af;
+    --border: #2a3b4c;
+    --heading: #f0f5f8;
+    --shadow: 0 2px 10px rgba(0,0,0,0.35);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -114,7 +147,7 @@
     box-shadow: var(--shadow); border: 1px solid var(--border);
   }
   .view-header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-  .view-header h2 { font-size:1.4rem; font-weight:800; color: var(--navy-800); }
+  .view-header h2 { font-size:1.4rem; font-weight:800; color: var(--heading); }
   .muted { color: var(--text-muted); font-size:0.92rem; }
   .muted.small { font-size: 0.82rem; }
 
@@ -127,11 +160,11 @@
   .btn:disabled { opacity:0.45; cursor:not-allowed; transform:none; }
   .btn-primary { background: var(--cisco-blue); color:#fff; box-shadow: 0 4px 14px rgba(4,159,217,0.35); }
   .btn-primary:hover:not(:disabled) { background: var(--cisco-blue-dark); }
-  .btn-secondary { background: var(--gray-bg); color: var(--navy-800); }
-  .btn-secondary:hover:not(:disabled) { background:#e1e7ec; }
+  .btn-secondary { background: var(--gray-bg); color: var(--heading); }
+  .btn-secondary:hover:not(:disabled) { background: var(--gray-bg-hover); }
   .btn-danger { background: var(--red); color:#fff; }
   .btn-danger:hover:not(:disabled) { background:#b93a3a; }
-  .btn-flag { background: var(--gray-bg); color: var(--navy-800); }
+  .btn-flag { background: var(--gray-bg); color: var(--heading); }
   .btn-flag.active { background: var(--yellow-bg); color: var(--yellow); }
   .btn-sm { padding: 7px 12px; font-size: 0.82rem; }
   .full-w { width:100%; }
@@ -147,7 +180,7 @@
   }
   .kind-badge.kind-module { background: var(--cisco-blue-light); color: var(--cisco-blue-dark); }
   .kind-badge.kind-checkpoint { background: var(--yellow-bg); color: var(--yellow); }
-  .kind-badge.kind-exam { background: #f1e6fb; color: #7a3fc9; }
+  .kind-badge.kind-exam { background: var(--purple-bg); color: var(--purple); }
 
   .tier-chip { font-size:0.72rem; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap; }
   .tier-chip.tier-strong, .big.tier-strong { background: var(--green-bg); color: var(--green); }
@@ -184,7 +217,7 @@
   .banner-login-text .icon { width:18px; height:18px; flex-shrink:0; }
 
   .account-link span { max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .account-email { display:flex; align-items:center; gap:8px; font-weight:700; color: var(--navy-800); }
+  .account-email { display:flex; align-items:center; gap:8px; font-weight:700; color: var(--heading); }
   .account-email .icon { color: var(--cisco-blue); }
   .account-divider { height:1px; background: var(--border); margin: 6px 0; }
   .account-error { background: var(--red-bg); color: var(--red); padding:10px 12px; border-radius: var(--radius-sm); font-size:0.85rem; font-weight:600; }
@@ -203,13 +236,13 @@
   .flame-icon.lit { color: #ef7a1f; animation: flameFlicker 1.8s ease-in-out infinite; }
   @keyframes flameFlicker { 0%,100% { transform: scale(1); opacity:1; } 50% { transform: scale(1.08) rotate(-2deg); opacity:0.85; } }
   .xp-icon { color: #e08e1c; }
-  .stat-main { font-size:2rem; font-weight:900; color: var(--navy-800); display:flex; align-items:baseline; gap:6px; }
+  .stat-main { font-size:2rem; font-weight:900; color: var(--heading); display:flex; align-items:baseline; gap:6px; }
   .stat-unit { font-size:0.85rem; font-weight:600; color: var(--text-muted); }
   .stat-sub { font-size:0.82rem; color: var(--text-muted); }
   .stat-hint { font-size:0.8rem; color: var(--yellow); font-weight:600; }
   .stat-hint.good { color: var(--green); }
 
-  h3 { font-size:1.02rem; font-weight:800; color: var(--navy-800); display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  h3 { font-size:1.02rem; font-weight:800; color: var(--heading); display:flex; align-items:center; gap:8px; margin-bottom:14px; }
   h3 .icon { width:18px; height:18px; color: var(--cisco-blue); }
 
   .focus-list { display:flex; flex-direction:column; gap:10px; }
@@ -224,7 +257,7 @@
   .hist-len { color: var(--text-muted); font-size:0.78rem; }
 
   .mastery-course-group + .mastery-course-group { margin-top: 18px; }
-  .mastery-course-title { font-weight:800; color: var(--navy-800); margin-bottom:10px; font-size:0.92rem; }
+  .mastery-course-title { font-weight:800; color: var(--heading); margin-bottom:10px; font-size:0.92rem; }
   .mastery-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:10px; }
   .mastery-chip {
     display:flex; flex-direction:column; gap:4px; align-items:flex-start; text-align:left;
@@ -237,7 +270,7 @@
   .mastery-chip.tier-weak { background: var(--red-bg); border-color: rgba(214,69,69,0.25); }
   .mastery-chip.tier-notstarted { background: var(--gray-bg); border-color: rgba(134,149,164,0.2); }
   .mastery-chip-kind { font-size:0.65rem; text-transform:uppercase; font-weight:800; color: var(--text-muted); letter-spacing:0.4px; }
-  .mastery-chip-title { font-size:0.82rem; font-weight:700; color: var(--navy-800); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+  .mastery-chip-title { font-size:0.82rem; font-weight:700; color: var(--heading); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
   .mastery-chip-pct { font-size:0.9rem; font-weight:800; }
 
   .badge-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap:14px; }
@@ -247,7 +280,7 @@
   .badge-item.earned .badge-icon { background: linear-gradient(135deg, var(--cisco-blue), var(--cisco-blue-dark)); color:#fff; box-shadow: 0 4px 14px rgba(4,159,217,0.4); }
   .badge-item.locked .badge-icon { filter: grayscale(1); opacity:0.35; color: var(--gray); }
   .badge-item.locked .badge-name { opacity:0.45; }
-  .badge-name { font-size:0.72rem; font-weight:700; color: var(--navy-800); }
+  .badge-name { font-size:0.72rem; font-weight:700; color: var(--heading); }
   .badge-item.pop .badge-icon { animation: popIn 0.55s cubic-bezier(.34,1.56,.64,1); }
   @keyframes popIn { 0% { transform: scale(0.3); opacity:0; } 60% { transform: scale(1.12); opacity:1; } 100% { transform: scale(1); } }
 
@@ -259,12 +292,12 @@
   .random-mix-title { display:flex; align-items:center; gap:8px; font-weight:800; font-size:1.05rem; }
   .random-mix-title .icon { color:#fff; }
   .random-mix-desc { font-size:0.82rem; opacity:0.92; }
-  .kind-badge.kind-mix { background:#f1e6fb; color:#7a3fc9; }
+  .kind-badge.kind-mix { background: var(--purple-bg); color: var(--purple); }
 
   .course-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:16px; }
   .course-card { display:flex; flex-direction:column; gap:8px; text-align:left; border:1px solid var(--border); transition: transform 0.12s ease, box-shadow 0.12s ease; }
   .course-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
-  .course-card-title { font-weight:800; font-size:1rem; color: var(--navy-800); }
+  .course-card-title { font-weight:800; font-size:1rem; color: var(--heading); }
   .course-card-meta { font-size:0.8rem; color: var(--text-muted); }
   .course-card-pct { font-size:0.78rem; color: var(--text-muted); font-weight:600; }
 
@@ -282,7 +315,7 @@
   .question-card.result-incorrect { animation: incorrectShake 0.4s ease; box-shadow: 0 0 0 3px rgba(214,69,69,0.3), var(--shadow); }
   @keyframes correctPulse { 0% { box-shadow:0 0 0 0 rgba(30,164,92,0.5),var(--shadow);} 100% { box-shadow:0 0 0 3px rgba(30,164,92,0.35),var(--shadow);} }
   @keyframes incorrectShake { 0%,100% { transform: translateX(0);} 20% { transform: translateX(-6px);} 40% { transform: translateX(6px);} 60% { transform: translateX(-4px);} 80% { transform: translateX(4px);} }
-  .q-text { font-size:1.08rem; font-weight:700; color: var(--navy-800); line-height:1.5; }
+  .q-text { font-size:1.08rem; font-weight:700; color: var(--heading); line-height:1.5; }
   .q-hint { font-size:0.8rem; color: var(--cisco-blue-dark); font-weight:700; margin-top:4px; }
 
   .options { display:flex; flex-direction:column; gap:9px; }
@@ -309,14 +342,15 @@
   .option-row.correct .option-check .icon { color: var(--green); }
 
   .tf-row { display:flex; gap:12px; }
-  .tf-btn { flex:1; padding:16px; border-radius: var(--radius-sm); border:2px solid var(--border); background:#fff; font-weight:800; font-size:1rem; color: var(--text-muted); }
+  .tf-btn { flex:1; padding:16px; border-radius: var(--radius-sm); border:2px solid var(--border); background:var(--card-bg); font-weight:800; font-size:1rem; color: var(--text-muted); }
   .tf-btn:hover:not(:disabled) { border-color: var(--cisco-blue); color: var(--cisco-blue-dark); }
   .tf-btn.selected { border-color: var(--cisco-blue); background: var(--cisco-blue-light); color: var(--cisco-blue-dark); }
   .tf-btn.correct { border-color: var(--green); background: var(--green-bg); color: var(--green); }
   .tf-btn.incorrect { border-color: var(--red); background: var(--red-bg); color: var(--red); }
 
   .blank-row { display:flex; flex-direction:column; gap:8px; }
-  .blank-input { padding: 13px 14px; border-radius: var(--radius-sm); border:2px solid var(--border); font-size:0.98rem; width:100%; }
+  .blank-input { padding: 13px 14px; border-radius: var(--radius-sm); border:2px solid var(--border); background: var(--card-bg); color: var(--text-main); font-size:0.98rem; width:100%; }
+  .blank-input::placeholder { color: var(--text-muted); opacity:1; }
   .blank-input:focus { border-color: var(--cisco-blue); }
   .blank-input.correct { border-color: var(--green); background: var(--green-bg); color: var(--green); font-weight:700; }
   .blank-input.incorrect { border-color: var(--red); background: var(--red-bg); color: var(--red); font-weight:700; }
@@ -324,7 +358,7 @@
 
   .match-wrap { display:flex; gap:14px; }
   .match-col { flex:1; display:flex; flex-direction:column; gap:8px; }
-  .match-item { padding:11px 12px; border-radius: var(--radius-sm); border:2px solid var(--border); background:#fff; text-align:left; font-size:0.86rem; display:flex; align-items:center; gap:8px; }
+  .match-item { padding:11px 12px; border-radius: var(--radius-sm); border:2px solid var(--border); background:var(--card-bg); text-align:left; font-size:0.86rem; display:flex; align-items:center; gap:8px; }
   .match-item:hover:not(:disabled) { border-color: var(--cisco-blue); }
   .match-item.active { border-color: var(--cisco-blue); background: var(--cisco-blue-light); box-shadow: 0 0 0 2px rgba(4,159,217,0.25); }
   .match-item.paired { border-color: var(--cisco-blue-dark); }
@@ -380,12 +414,12 @@
   .exam-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:12px; }
   .exam-nav-panel { width:250px; flex-shrink:0; background: var(--card-bg); border:1px solid var(--border); border-radius: var(--radius); padding:16px; display:flex; flex-direction:column; gap:12px; position:sticky; top:20px; }
   @media (max-width: 800px) { .exam-layout { flex-direction:column; } .exam-nav-panel { width:100%; position:static; } }
-  .exam-nav-title { font-weight:800; font-size:0.85rem; color: var(--navy-800); }
+  .exam-nav-title { font-weight:800; font-size:0.85rem; color: var(--heading); }
   .exam-nav-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap:6px; max-height:280px; overflow-y:auto; padding-right:2px; }
-  .exam-nav-btn { aspect-ratio: 1; border-radius:7px; border:2px solid var(--border); background:#fff; font-weight:700; font-size:0.76rem; color: var(--text-muted); padding:0; }
+  .exam-nav-btn { aspect-ratio: 1; border-radius:7px; border:2px solid var(--border); background:var(--card-bg); font-weight:700; font-size:0.76rem; color: var(--text-muted); padding:0; }
   .exam-nav-btn.answered { background: var(--cisco-blue-light); border-color: var(--cisco-blue); color: var(--cisco-blue-dark); }
   .exam-nav-btn.flagged { border-color: var(--yellow); box-shadow: inset 0 0 0 1px var(--yellow); }
-  .exam-nav-btn.current { border-color: var(--navy-800); box-shadow: 0 0 0 2px rgba(22,41,59,0.25); }
+  .exam-nav-btn.current { border-color: var(--heading); box-shadow: 0 0 0 2px rgba(22,41,59,0.25); }
   .exam-nav-legend { display:flex; flex-direction:column; gap:5px; font-size:0.74rem; color: var(--text-muted); }
   .exam-nav-legend span { display:flex; align-items:center; gap:6px; }
   .dot { width:10px; height:10px; border-radius:50%; background: var(--gray-bg); border:2px solid var(--border); display:inline-block; }
@@ -394,7 +428,7 @@
   .flag-mark { width:16px; height:16px; color: var(--yellow); }
 
   .results-summary { text-align:center; display:flex; flex-direction:column; gap:4px; align-items:center; padding:28px; }
-  .results-score { font-size:2.2rem; font-weight:900; color: var(--navy-800); }
+  .results-score { font-size:2.2rem; font-weight:900; color: var(--heading); }
   .results-pct { font-size:1.1rem; font-weight:700; color: var(--cisco-blue-dark); }
   .results-meta { font-size:0.82rem; color: var(--text-muted); margin-top:6px; }
   .results-summary.result-correct { background: var(--green-bg); }
@@ -417,7 +451,7 @@
   #modalRoot { position:fixed; inset:0; z-index:1100; display:none; }
   #modalRoot.open { display:block; }
   .modal-overlay { position:fixed; inset:0; background: rgba(10,22,34,0.55); display:flex; align-items:center; justify-content:center; padding:20px; }
-  .modal { background:#fff; border-radius: var(--radius); max-width:440px; width:100%; box-shadow: var(--shadow-lg); animation: popIn 0.25s ease; max-height: 85vh; overflow-y:auto; }
+  .modal { background:var(--card-bg); border-radius: var(--radius); max-width:440px; width:100%; box-shadow: var(--shadow-lg); animation: popIn 0.25s ease; max-height: 85vh; overflow-y:auto; }
   .modal-head { display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid var(--border); }
   .modal-head h3 { font-size:1.05rem; font-weight:800; }
   .modal-body { padding:20px; display:flex; flex-direction:column; gap:14px; }
@@ -678,7 +712,9 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     exam: '<rect x="6" y="4" width="12" height="17" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><rect x="9" y="2.5" width="6" height="3" rx="1" fill="currentColor"/><path d="M9 13l2 2 4-4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
     target: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
     bolt: '<path d="M13 2L4 14h6l-1 8 9-12h-6l1-8Z" fill="currentColor"/>',
-    user: '<circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21c0-4.5 3.6-7 8-7s8 2.5 8 7" fill="currentColor"/>'
+    user: '<circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21c0-4.5 3.6-7 8-7s8 2.5 8 7" fill="currentColor"/>',
+    sun: '<circle cx="12" cy="12" r="4.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" fill="currentColor"/>'
   };
   function svgIcon(name, cls) {
     var c = cls ? " " + cls : "";
@@ -2069,10 +2105,12 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<div class="nav-spacer"></div>' +
       '<div id="navQuickStats" class="nav-quick-stats"></div>' +
       '<button class="nav-link account-link" onclick="App.openAccount()">' + svgIcon("user") + '<span id="navAccountLabel">Login</span></button>' +
+      '<button class="nav-link" id="themeToggleBtn" onclick="App.toggleTheme()"></button>' +
       '<button class="nav-link settings-link" onclick="App.openSettings()">' + svgIcon("gear") + "<span>Settings</span></button>" +
       "</nav>" +
       '<main id="mainArea"><div id="view"></div></main>';
     updateNavAccountLabel();
+    updateThemeToggleButton();
   }
 
   function updateNavActive() {
@@ -2090,6 +2128,37 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var el = document.getElementById("navAccountLabel");
     if (!el) return;
     el.textContent = isLoggedIn() ? Account.email : "Login";
+  }
+
+  /* =========================================================
+     THEME (light / dark)
+     A tiny inline script in <head> already applies the saved/
+     system-preferred theme before first paint (no flash). This
+     just keeps it in sync when the user toggles it and persists
+     the explicit choice -- stored outside LS_KEYS/ALL_LS_KEYS,
+     same reasoning as auth: a UI preference, not progress data,
+     should survive "Reset all progress".
+     ========================================================= */
+  function getTheme() {
+    return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+  }
+
+  function applyTheme(theme) {
+    if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
+    else document.documentElement.removeAttribute("data-theme");
+    lsSet(LS_PREFIX + "theme", theme);
+    updateThemeToggleButton();
+  }
+
+  function toggleTheme() {
+    applyTheme(getTheme() === "dark" ? "light" : "dark");
+  }
+
+  function updateThemeToggleButton() {
+    var el = document.getElementById("themeToggleBtn");
+    if (!el) return;
+    var dark = getTheme() === "dark";
+    el.innerHTML = svgIcon(dark ? "sun" : "moon") + "<span>" + (dark ? "Light Mode" : "Dark Mode") + "</span>";
   }
 
   function updateNavQuickStats() {
@@ -2152,6 +2221,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     confirmSubmitExam: confirmSubmitExam,
     submitExam: submitExam,
     openSettings: openSettings,
+    toggleTheme: toggleTheme,
     openAccount: openAccount,
     switchAccountMode: switchAccountMode,
     submitLogin: submitLogin,
