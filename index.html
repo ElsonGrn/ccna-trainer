@@ -210,6 +210,7 @@
   .banner-countdown-text { display:flex; flex-direction:column; gap:4px; }
   .banner-countdown-text strong { font-size:1.05rem; }
   .banner-countdown-text span { font-size:0.82rem; color: rgba(234,242,247,0.7); }
+  .banner-countdown-empty { justify-content: space-between; }
 
   .banner-login { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
     background: var(--cisco-blue-light); border: 1px solid rgba(4,159,217,0.3); border-radius: var(--radius); padding: 14px 20px; margin-bottom:16px; }
@@ -542,7 +543,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     perfectSection: LS_PREFIX + "perfectSection",
     mixSessionsCompleted: LS_PREFIX + "mixSessionsCompleted",
     perfectMixLarge: LS_PREFIX + "perfectMixLarge",
-    missedQuestions: LS_PREFIX + "missedQuestions"
+    missedQuestions: LS_PREFIX + "missedQuestions",
+    examDate: LS_PREFIX + "examDate"
   };
   var ALL_LS_KEYS = Object.keys(LS_KEYS).map(function (k) { return LS_KEYS[k]; });
 
@@ -552,7 +554,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       sectionStats: {}, badges: [], examHistory: [], lifetimeAnswered: 0,
       lifetimeCorrect: 0, perfectSection: false,
       mixSessionsCompleted: 0, perfectMixLarge: false,
-      missedQuestions: {}
+      missedQuestions: {}, examDate: null
     };
   }
 
@@ -571,7 +573,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       perfectSection: lsGet(LS_KEYS.perfectSection, false),
       mixSessionsCompleted: lsGet(LS_KEYS.mixSessionsCompleted, 0),
       perfectMixLarge: lsGet(LS_KEYS.perfectMixLarge, false),
-      missedQuestions: lsGet(LS_KEYS.missedQuestions, {})
+      missedQuestions: lsGet(LS_KEYS.missedQuestions, {}),
+      examDate: lsGet(LS_KEYS.examDate, null)
     };
   }
 
@@ -590,6 +593,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     lsSet(LS_KEYS.mixSessionsCompleted, State.mixSessionsCompleted);
     lsSet(LS_KEYS.perfectMixLarge, State.perfectMixLarge);
     lsSet(LS_KEYS.missedQuestions, State.missedQuestions);
+    lsSet(LS_KEYS.examDate, State.examDate);
     if (!skipSync) scheduleSync();
   }
 
@@ -1660,12 +1664,37 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<p class="muted">' + (isLoggedIn()
         ? "CCNA Trainer stores your progress locally in this browser and syncs it to your account (" + esc(Account.email) + ")."
         : "CCNA Trainer stores all your progress locally in this browser only (localStorage). Nothing is uploaded anywhere unless you log in.") + "</p>" +
+      "<h4>Exam Target Date</h4>" +
+      '<p class="muted small">Shown as a countdown on the Dashboard. No date is set by default.</p>' +
+      '<input class="blank-input" type="date" id="examDateInput" value="' + (State.examDate ? esc(State.examDate) : "") + '">' +
+      '<div class="btn-row">' +
+      '<button class="btn btn-primary" onclick="App.saveExamDate()">' + (State.examDate ? "Update Date" : "Set Date") + '</button>' +
+      (State.examDate ? '<button class="btn btn-secondary" onclick="App.clearExamDate()">Clear</button>' : "") +
+      "</div>" +
+      '<div class="account-divider"></div>' +
       (!confirming
         ? '<button class="btn btn-danger" onclick="App.confirmResetStep()">Reset all progress</button>'
         : '<div class="confirm-box"><p><strong>Are you sure?</strong> This permanently erases your XP, streaks, mastery stats, badges, and exam history' + (isLoggedIn() ? " — on this device and in your account" : " on this device") + '.</p>' +
           '<div class="btn-row"><button class="btn btn-secondary" onclick="App.cancelResetStep()">Cancel</button>' +
           '<button class="btn btn-danger" onclick="App.doReset()">Yes, erase everything</button></div></div>') +
       "</div></div>";
+  }
+
+  function saveExamDate() {
+    var val = (document.getElementById("examDateInput") || {}).value || "";
+    State.examDate = val || null;
+    saveState();
+    closeModal();
+    render();
+    showToast(State.examDate ? "Exam date set" : "Exam date cleared", "", "info");
+  }
+
+  function clearExamDate() {
+    State.examDate = null;
+    saveState();
+    closeModal();
+    render();
+    showToast("Exam date cleared", "", "info");
   }
 
   function doReset() {
@@ -1815,7 +1844,13 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
      DASHBOARD VIEW
      ========================================================= */
   function renderCountdownBanner() {
-    var target = new Date(2026, 8, 11); // September 11, 2026
+    if (!State.examDate) {
+      return '<div class="banner-countdown banner-countdown-empty">' +
+        '<div class="banner-countdown-text"><strong>No exam date set</strong><span>Set a target date in Settings to see a countdown.</span></div>' +
+        '<button class="btn btn-secondary btn-sm" onclick="App.openSettings()">Set Date</button>' +
+        "</div>";
+    }
+    var target = isoToDate(State.examDate);
     var now = new Date();
     var startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var diffDays = Math.round((target - startOfToday) / 86400000);
@@ -1824,9 +1859,10 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     else if (diffDays === 1) msg = "1 day until your CCNA exam target";
     else if (diffDays === 0) msg = "Your CCNA exam target is today — good luck!";
     else msg = "Your target date has passed — keep studying, or set a new date!";
+    var formatted = target.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
     return '<div class="banner-countdown">' +
       '<div class="banner-countdown-num">' + (diffDays >= 0 ? diffDays : "—") + "</div>" +
-      '<div class="banner-countdown-text"><strong>' + esc(msg) + "</strong><span>Target: September 11, 2026</span></div>" +
+      '<div class="banner-countdown-text"><strong>' + esc(msg) + "</strong><span>Target: " + esc(formatted) + "</span></div>" +
       "</div>";
   }
 
@@ -2298,6 +2334,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     confirmSubmitExam: confirmSubmitExam,
     submitExam: submitExam,
     openSettings: openSettings,
+    saveExamDate: saveExamDate,
+    clearExamDate: clearExamDate,
     toggleTheme: toggleTheme,
     openAccount: openAccount,
     switchAccountMode: switchAccountMode,
