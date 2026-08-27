@@ -874,6 +874,12 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     "ensa-m13": "netfund", "ensa-m14": "automation", "ensa-cp5": "automation"
   };
 
+  // Real CCNA 200-301 items are single/multi-answer multiple choice and drag-and-drop
+  // matching (plus testlets/simlets, which a quiz format can't reproduce) -- no true/false
+  // and no free-text fill-in-the-blank, so those two types are excluded here to keep the
+  // simulation format-accurate.
+  var CCNA_SIM_TYPES = { single: true, multi: true, match: true };
+
   function buildBlueprintPool() {
     var pool = [];
     COURSES.forEach(function (course) {
@@ -882,6 +888,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
         var domain = SECTION_DOMAIN[sec.id];
         if (!domain) return;
         sec.questions.forEach(function (q) {
+          if (!CCNA_SIM_TYPES[q.type]) return;
           pool.push({ course: course, sectionId: sec.id, sectionTitle: sec.title, kind: sec.kind, domain: domain, q: q });
         });
       });
@@ -1344,11 +1351,20 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
 
   function examTimerTick() {
     if (!Exam || Exam.finished || !Exam.deadline) { clearExamTimer(); return; }
-    if (Exam.deadline - Date.now() <= 0) {
+    var remaining = Exam.deadline - Date.now();
+    if (remaining <= 0) {
       submitExam();
       return;
     }
-    if (Router.current.name === "exam-question" || Router.current.name === "exam-review") render();
+    // Patch just the timer badge in place -- calling render() here would replace the whole
+    // view's innerHTML every second and reset any scroll position the user has (e.g. scrolled
+    // down the question nav panel), which is exactly what full re-renders should never do for
+    // a tick that only changes one small label.
+    var el = document.getElementById("examTimerBadge");
+    if (el) {
+      el.classList.toggle("low", remaining < 5 * 60 * 1000);
+      el.innerHTML = svgIcon("bolt") + " " + formatDuration(remaining) + " left";
+    }
   }
 
   function prevExamQuestion() { if (Exam && Exam.idx > 0) { Exam.idx--; render(); } }
@@ -1721,7 +1737,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<div class="ccna-sim-desc">' + CCNA_SIM_LENGTH + " questions in " + Math.round(CCNA_SIM_TIME_LIMIT_MS / 60000) +
       " minutes, sampled proportionally across the official CCNA 200-301 v1.1 exam blueprint (" +
       BLUEPRINT_DOMAINS.map(function (d) { return Math.round(d.weight * 100) + "% " + d.name.replace(/^[0-9.]+\s*/, ""); }).join(", ") +
-      "). Auto-submits when time runs out. Score " + Math.round(CCNA_SIM_PASS_PCT * 100) + "%+ — the real exam's passing bar — to earn the <strong>You Passed</strong> badge.</div>" +
+      "). Multiple choice and matching only, like the real exam — no true/false or fill-in-the-blank. Auto-submits when time runs out. Score " + Math.round(CCNA_SIM_PASS_PCT * 100) + "%+ — the real exam's passing bar — to earn the <strong>You Passed</strong> badge.</div>" +
       "</button>" +
       '<p class="muted">Or choose a length for an untimed practice exam. Questions are drawn randomly but proportionally across ITN, SRWE, and ENSA — approximating the real exam\'s mixed blueprint. No timer, but we\'ll track how long you take.</p>' +
       '<div class="exam-len-grid">' +
@@ -1736,7 +1752,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   function renderExamTimerBadge() {
     if (!Exam || !Exam.deadline) return "";
     var remaining = Math.max(0, Exam.deadline - Date.now());
-    return '<span class="exam-timer' + (remaining < 5 * 60 * 1000 ? " low" : "") + '">' + svgIcon("bolt") + " " + formatDuration(remaining) + " left</span>";
+    return '<span id="examTimerBadge" class="exam-timer' + (remaining < 5 * 60 * 1000 ? " low" : "") + '">' + svgIcon("bolt") + " " + formatDuration(remaining) + " left</span>";
   }
 
   function renderExamQuestionView() {
