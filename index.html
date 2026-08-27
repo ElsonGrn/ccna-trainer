@@ -239,6 +239,15 @@
   @keyframes popIn { 0% { transform: scale(0.3); opacity:0; } 60% { transform: scale(1.12); opacity:1; } 100% { transform: scale(1); } }
 
   /* ============ STUDY / COURSE PICKERS ============ */
+  .random-mix-card { display:flex; flex-direction:column; gap:6px; text-align:left; border:none; margin-bottom:16px;
+    background: linear-gradient(120deg, var(--cisco-blue), var(--cisco-blue-dark)); color:#fff;
+    transition: transform 0.12s ease, box-shadow 0.12s ease; }
+  .random-mix-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .random-mix-title { display:flex; align-items:center; gap:8px; font-weight:800; font-size:1.05rem; }
+  .random-mix-title .icon { color:#fff; }
+  .random-mix-desc { font-size:0.82rem; opacity:0.92; }
+  .kind-badge.kind-mix { background:#f1e6fb; color:#7a3fc9; }
+
   .course-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:16px; }
   .course-card { display:flex; flex-direction:column; gap:8px; text-align:left; border:1px solid var(--border); transition: transform 0.12s ease, box-shadow 0.12s ease; }
   .course-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
@@ -1084,6 +1093,19 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
 
   function jumpStudy(course, sectionId) { startStudySection(course, sectionId); }
 
+  function startRandomMixStudy() {
+    var pool = buildQuestionPool();
+    if (pool.length === 0) return;
+    Study = {
+      course: null, sectionId: null, mixed: true, pool: pool,
+      section: { id: "__mix__", title: "Random Mix — All Modules & Exams", kind: "mix", questions: pool.map(function (item) { return item.q; }) },
+      order: shuffleArr(pool.map(function (_, i) { return i; })),
+      idx: 0, correctCount: 0, xpGained: 0, submitted: false, lastCorrect: false,
+      userAnswer: null, matchPairing: {}, matchRightOrder: null, activeLeft: null
+    };
+    navigate("study-question");
+  }
+
   function submitStudyAnswer() {
     if (!Study || Study.submitted) return;
     var q = currentQuestionObj();
@@ -1094,7 +1116,12 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var xp = isCorrect ? 10 : 2;
     Study.xpGained += xp;
     addXP(xp);
-    recordAnswer(Study.course, Study.sectionId, isCorrect);
+    if (Study.mixed) {
+      var item = Study.pool[Study.order[Study.idx]];
+      recordAnswer(item.course, item.sectionId, isCorrect);
+    } else {
+      recordAnswer(Study.course, Study.sectionId, isCorrect);
+    }
     touchActivity();
     render();
     checkBadges();
@@ -1126,7 +1153,10 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     navigate("study-summary");
   }
 
-  function restartStudySection() { if (Study) startStudySection(Study.course, Study.sectionId); }
+  function restartStudySection() {
+    if (!Study) return;
+    if (Study.mixed) startRandomMixStudy(); else startStudySection(Study.course, Study.sectionId);
+  }
 
   function exitStudy() {
     var course = Study ? Study.course : null;
@@ -1415,8 +1445,13 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
      STUDY VIEWS
      ========================================================= */
   function renderStudyCoursePick() {
+    var mixCount = buildQuestionPool().length;
     return '<div class="view-header"><h2>Study Mode</h2></div>' +
-      '<p class="muted">Pick a course to begin.</p>' +
+      '<button class="card random-mix-card full-w" onclick="App.startRandomMixStudy()">' +
+      '<div class="random-mix-title">' + svgIcon("bolt") + " Random Mix</div>" +
+      '<div class="random-mix-desc">Random questions in random order, pulled from every course, module and exam (' + mixCount + " questions).</div>" +
+      "</button>" +
+      '<p class="muted">Or pick a course to begin.</p>' +
       '<div class="course-grid">' + COURSES.map(function (c) {
         var secs = DATA[c].sections;
         var avg = courseAvgMastery(c);
@@ -1478,19 +1513,25 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   function renderStudySummary() {
     if (!Study) return renderStudyCoursePick();
     var total = Study.order.length;
-    var stat = getSectionStat(Study.course, Study.sectionId);
-    var tier = masteryTier(stat);
-    var pct = masteryPct(stat);
+    var mixed = !!Study.mixed;
     var scorePct = total > 0 ? Math.round(100 * Study.correctCount / total) : 0;
-    return '<div class="card summary-card"><h2>Section Complete</h2><h3>' + esc(Study.section.title) + '</h3>' +
+    var thirdTile = mixed
+      ? '<div class="summary-stat"><div class="big">' + COURSES.length + '</div><div class="lbl">Courses mixed</div></div>'
+      : (function () {
+          var stat = getSectionStat(Study.course, Study.sectionId);
+          var tier = masteryTier(stat);
+          var pct = masteryPct(stat);
+          return '<div class="summary-stat"><div class="big tier-' + tier + '">' + tierLabel(tier) + '</div><div class="lbl">Section mastery (' + pct + '%)</div></div>';
+        })();
+    return '<div class="card summary-card"><h2>' + (mixed ? "Random Mix Complete" : "Section Complete") + '</h2><h3>' + esc(Study.section.title) + '</h3>' +
       '<div class="summary-stats">' +
       '<div class="summary-stat"><div class="big">' + Study.correctCount + "/" + total + '</div><div class="lbl">Correct (' + scorePct + '%)</div></div>' +
       '<div class="summary-stat"><div class="big">+' + Study.xpGained + '</div><div class="lbl">XP earned</div></div>' +
-      '<div class="summary-stat"><div class="big tier-' + tier + '">' + tierLabel(tier) + '</div><div class="lbl">Section mastery (' + pct + '%)</div></div>' +
+      thirdTile +
       "</div>" +
       '<div class="btn-row">' +
-      '<button class="btn btn-secondary" onclick="App.restartStudySection()">Study Again</button>' +
-      '<button class="btn btn-secondary" onclick="App.exitStudy()">Back to Sections</button>' +
+      '<button class="btn btn-secondary" onclick="App.restartStudySection()">' + (mixed ? "New Random Mix" : "Study Again") + '</button>' +
+      '<button class="btn btn-secondary" onclick="App.exitStudy()">' + (mixed ? "Back to Study Mode" : "Back to Sections") + '</button>' +
       '<button class="btn btn-primary" onclick="App.go(\'dashboard\')">Dashboard</button>' +
       "</div></div>";
   }
@@ -1659,6 +1700,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     navigate: navigate,
     pickStudyCourse: pickStudyCourse,
     jumpStudy: jumpStudy,
+    startRandomMixStudy: startRandomMixStudy,
     submitStudyAnswer: submitStudyAnswer,
     nextStudyQuestion: nextStudyQuestion,
     restartStudySection: restartStudySection,
