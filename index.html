@@ -940,7 +940,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     { id: "mix_master", name: "Mix Master", desc: "Complete your first Random Mix session.", icon: "bolt", test: function () { return State.mixSessionsCompleted >= 1; } },
     { id: "mix_marathon", name: "Mix Marathon", desc: "Complete 10 Random Mix sessions.", icon: "bolt", test: function () { return State.mixSessionsCompleted >= 10; } },
     { id: "flawless_mix", name: "Flawless Mix", desc: "Score 100% on a Random Mix session of 30 or more questions.", icon: "star", test: function () { return State.perfectMixLarge === true; } },
-    { id: "you_passed", name: "You Passed", desc: "Score 70% or higher on the CCNA Certification Simulation (120 questions, 150 minutes, official exam blueprint weighting) — the real exam's passing bar.", icon: "trophy", test: function () { return State.examHistory.some(function (e) { return e.kind === "ccna_sim" && e.total > 0 && (e.score / e.total) >= CCNA_SIM_PASS_PCT; }); } }
+    { id: "you_passed", name: "You Passed", desc: "Score 80% or higher on the CCNA Certification Simulation (120 questions, 150 minutes, official exam blueprint weighting).", icon: "trophy", test: function () { return State.examHistory.some(function (e) { return e.kind === "ccna_sim" && e.total > 0 && (e.score / e.total) >= CCNA_SIM_PASS_PCT; }); } }
   ];
 
   function checkBadges() {
@@ -1027,7 +1027,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
      ========================================================= */
   var CCNA_SIM_LENGTH = 120;
   var CCNA_SIM_TIME_LIMIT_MS = 150 * 60 * 1000;
-  var CCNA_SIM_PASS_PCT = 0.7;
+  var CCNA_SIM_PASS_PCT = 0.8;
 
   var BLUEPRINT_DOMAINS = [
     { id: "netfund", name: "1.0 Network Fundamentals", weight: 0.2 },
@@ -2377,7 +2377,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<div class="ccna-sim-desc">' + CCNA_SIM_LENGTH + " questions in " + Math.round(CCNA_SIM_TIME_LIMIT_MS / 60000) +
       " minutes, sampled proportionally across the official CCNA 200-301 v1.1 exam blueprint (" +
       BLUEPRINT_DOMAINS.map(function (d) { return Math.round(d.weight * 100) + "% " + d.name.replace(/^[0-9.]+\s*/, ""); }).join(", ") +
-      "). Multiple choice and matching only, like the real exam — no true/false or fill-in-the-blank. Auto-submits when time runs out. Score " + Math.round(CCNA_SIM_PASS_PCT * 100) + "%+ — the real exam's passing bar — to earn the <strong>You Passed</strong> badge.</div>" +
+      "). Multiple choice and matching only, like the real exam — no true/false or fill-in-the-blank. Auto-submits when time runs out. Score " + Math.round(CCNA_SIM_PASS_PCT * 100) + "%+ to earn the <strong>You Passed</strong> badge.</div>" +
       "</button>" +
       '<p class="muted">Or choose a length for an untimed practice exam. Questions are drawn randomly but proportionally across ITN, SRWE, and ENSA — approximating the real exam\'s mixed blueprint. No timer, but we\'ll track how long you take.</p>' +
       '<div class="exam-len-grid">' +
@@ -2466,7 +2466,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       (isCcnaSim
         ? '<div class="card ccna-sim-result ' + (passed ? "pass" : "fail") + '"><div class="ccna-sim-result-title">' +
           (passed ? svgIcon("trophy") + " You Passed!" : svgIcon("close") + " Not Passed") + "</div><div class=\"ccna-sim-result-desc\">" +
-          Math.round(CCNA_SIM_PASS_PCT * 100) + "% required, like the real exam.</div></div>"
+          Math.round(CCNA_SIM_PASS_PCT * 100) + "% required.</div></div>"
         : "") +
       '<div class="card results-summary ' + resultClass + '"><div class="results-score">' + record.score + "/" + record.total + '</div><div class="results-pct">' + pct + '%</div>' +
       '<div class="results-meta">Time taken: ' + formatDuration(record.elapsedMs) + " &middot; " + esc(record.date) + "</div></div>" +
