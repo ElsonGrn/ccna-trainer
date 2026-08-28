@@ -321,6 +321,7 @@
     animation: companionBob 3.2s ease-in-out infinite;
   }
   .global-companion-btn:hover .companion-stage { animation-play-state:paused; transform: translateX(-8px) scale(1.12); }
+  .global-companion-btn .companion-stage.reacting { animation: companionReact 0.7s ease; }
   @keyframes companionDrift {
     0% { top:16%; }
     50% { top:62%; }
@@ -329,6 +330,13 @@
   @keyframes companionBob {
     0%, 100% { transform: translateY(0) rotate(2deg); }
     50% { transform: translateY(-9px) rotate(-4deg); }
+  }
+  @keyframes companionReact {
+    0% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.3) rotate(-10deg); }
+    50% { transform: scale(0.9) rotate(8deg); }
+    72% { transform: scale(1.12) rotate(-4deg); }
+    100% { transform: scale(1) rotate(0deg); }
   }
 
   /* ============ STUDY / COURSE PICKERS ============ */
@@ -2051,8 +2059,26 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     if (!el) return;
     var preview = renderCompanionPreview();
     el.innerHTML = preview
-      ? '<button class="global-companion-btn" onclick="App.navigate(\'shop\')" aria-label="Visit Shop">' + preview + "</button>"
+      ? '<button class="global-companion-btn" onclick="App.reactCompanion()" aria-label="Pat your companion">' + preview + "</button>"
       : "";
+  }
+
+  var companionReactTimer = null;
+  function reactCompanion() {
+    var stage = document.querySelector("#globalCompanion .companion-stage");
+    if (!stage) return;
+    var petId = State.equipped.pet;
+    var petItem = petId ? shopItem(petId) : null;
+    var petLayer = stage.querySelector(".companion-layer-pet");
+    if (petLayer && petItem && petItem.iconPop) petLayer.innerHTML = cosmeticArt(petItem.iconPop);
+    stage.classList.remove("reacting");
+    void stage.offsetWidth;
+    stage.classList.add("reacting");
+    clearTimeout(companionReactTimer);
+    companionReactTimer = setTimeout(function () {
+      stage.classList.remove("reacting");
+      if (petLayer && petItem) petLayer.innerHTML = cosmeticArt(petItem.icon);
+    }, 700);
   }
 
   function renderShop() {
@@ -2708,6 +2734,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     buyShopItem: buyShopItem,
     equipShopItem: equipShopItem,
     unequipShopCategory: unequipShopCategory,
+    reactCompanion: reactCompanion,
     submitStudyAnswer: submitStudyAnswer,
     nextStudyQuestion: nextStudyQuestion,
     restartStudySection: restartStudySection,
