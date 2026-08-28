@@ -356,7 +356,7 @@
   .options { display:flex; flex-direction:column; gap:9px; }
   .option-row {
     display:flex; align-items:center; gap:12px; text-align:left; padding: 12px 14px; border-radius: var(--radius-sm);
-    border: 2px solid var(--border); background: var(--card-bg); transition: border-color 0.15s ease, background 0.15s ease;
+    border: 2px solid var(--border); background: var(--card-bg); color: var(--text-main); transition: border-color 0.15s ease, background 0.15s ease;
     width:100%;
   }
   .option-row:hover:not(:disabled) { border-color: var(--cisco-blue); background: var(--cisco-blue-light); }
@@ -393,7 +393,7 @@
 
   .match-wrap { display:flex; gap:14px; }
   .match-col { flex:1; display:flex; flex-direction:column; gap:8px; }
-  .match-item { padding:11px 12px; border-radius: var(--radius-sm); border:2px solid var(--border); background:var(--card-bg); text-align:left; font-size:0.86rem; display:flex; align-items:center; gap:8px; }
+  .match-item { padding:11px 12px; border-radius: var(--radius-sm); border:2px solid var(--border); background:var(--card-bg); color: var(--text-main); text-align:left; font-size:0.86rem; display:flex; align-items:center; gap:8px; }
   .match-item:hover:not(:disabled) { border-color: var(--cisco-blue); }
   .match-item.active { border-color: var(--cisco-blue); background: var(--cisco-blue-light); box-shadow: 0 0 0 2px rgba(4,159,217,0.25); }
   .match-item.paired { border-color: var(--cisco-blue-dark); }
