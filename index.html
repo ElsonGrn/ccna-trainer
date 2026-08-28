@@ -455,11 +455,15 @@
   .exam-nav-btn.answered { background: var(--cisco-blue-light); border-color: var(--cisco-blue); color: var(--cisco-blue-dark); }
   .exam-nav-btn.flagged { border-color: var(--yellow); box-shadow: inset 0 0 0 1px var(--yellow); }
   .exam-nav-btn.current { border-color: var(--heading); box-shadow: 0 0 0 2px rgba(22,41,59,0.25); }
+  .exam-nav-btn.correct { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .exam-nav-btn.incorrect { background: var(--red-bg); border-color: var(--red); color: var(--red); }
   .exam-nav-legend { display:flex; flex-direction:column; gap:5px; font-size:0.74rem; color: var(--text-muted); }
   .exam-nav-legend span { display:flex; align-items:center; gap:6px; }
   .dot { width:10px; height:10px; border-radius:50%; background: var(--gray-bg); border:2px solid var(--border); display:inline-block; }
   .dot.answered { background: var(--cisco-blue-light); border-color: var(--cisco-blue); }
   .dot.flagged { border-color: var(--yellow); }
+  .dot.correct { background: var(--green-bg); border-color: var(--green); }
+  .dot.incorrect { background: var(--red-bg); border-color: var(--red); }
   .flag-mark { width:16px; height:16px; color: var(--yellow); }
 
   .results-summary { text-align:center; display:flex; flex-direction:column; gap:4px; align-items:center; padding:28px; }
@@ -2401,48 +2405,75 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var q = item.q;
     var ans = Exam.answers[Exam.idx];
     var num = Exam.idx + 1, total = Exam.items.length;
+    var finished = !!Exam.finished;
+    var isCorrect = finished && ans.answered ? evaluateAnswerGeneric(q, ans) : false;
     return '<div class="exam-layout"><div class="exam-main">' +
-      '<div class="view-header"><h2>' + (Exam.isCcnaSim ? "CCNA Certification Simulation" : "Mock Exam") + '</h2><span class="kind-badge kind-' + item.kind + '">' + esc(item.sectionTitle) + "</span>" + renderExamTimerBadge() + "</div>" +
+      '<div class="view-header"><h2>' + (Exam.isCcnaSim ? "CCNA Certification Simulation" : "Mock Exam") + '</h2><span class="kind-badge kind-' + item.kind + '">' + esc(item.sectionTitle) + "</span>" + (finished ? "" : renderExamTimerBadge()) + "</div>" +
       '<div class="q-progress-label">Question ' + num + " of " + total + "</div>" +
-      '<div class="card question-card">' +
+      '<div class="card question-card ' + (finished ? (isCorrect ? "result-correct" : "result-incorrect") : "") + '">' +
       renderQuestionPrompt(q) +
-      renderQuestionInputArea(q, ans, false) +
+      renderQuestionInputArea(q, ans, finished) +
+      (finished
+        ? '<div class="feedback ' + (isCorrect ? "good" : "bad") + '"><div class="feedback-title">' +
+          (isCorrect ? svgIcon("check") + " Correct!" : (ans.answered ? "Not quite" : "Not answered")) + '</div><div class="feedback-exp">' + esc(q.exp || "") + "</div></div>"
+        : "") +
       '<div class="q-actions exam-actions">' +
       '<button class="btn btn-secondary" onclick="App.prevExamQuestion()" ' + (Exam.idx === 0 ? "disabled" : "") + '>Previous</button>' +
-      '<button class="btn btn-flag ' + (ans.flagged ? "active" : "") + '" onclick="App.toggleFlag()">' + svgIcon("flag") + " " + (ans.flagged ? "Flagged" : "Flag for review") + "</button>" +
-      (num < total
-        ? '<button class="btn btn-primary" onclick="App.nextExamQuestion()">Next</button>'
-        : '<button class="btn btn-primary" onclick="App.goToExamReview()">Review &amp; Submit</button>') +
+      (finished
+        ? (num < total
+            ? '<button class="btn btn-primary" onclick="App.nextExamQuestion()">Next</button>'
+            : '<button class="btn btn-primary" onclick="App.navigate(\'exam-results\')">Back to Results</button>')
+        : '<button class="btn btn-flag ' + (ans.flagged ? "active" : "") + '" onclick="App.toggleFlag()">' + svgIcon("flag") + " " + (ans.flagged ? "Flagged" : "Flag for review") + "</button>" +
+          (num < total
+            ? '<button class="btn btn-primary" onclick="App.nextExamQuestion()">Next</button>'
+            : '<button class="btn btn-primary" onclick="App.goToExamReview()">Review &amp; Submit</button>')) +
       "</div></div></div>" +
       '<div class="exam-nav-panel"><div class="exam-nav-title">Questions</div><div class="exam-nav-grid">' +
       Exam.items.map(function (it, i) {
         var a = Exam.answers[i];
         var cls = "exam-nav-btn";
         if (i === Exam.idx) cls += " current";
-        if (a.answered) cls += " answered";
-        if (a.flagged) cls += " flagged";
+        if (finished) { cls += (a.answered && evaluateAnswerGeneric(it.q, a)) ? " correct" : " incorrect"; }
+        else { if (a.answered) cls += " answered"; if (a.flagged) cls += " flagged"; }
         return '<button class="' + cls + '" onclick="App.jumpExam(' + i + ')">' + (i + 1) + "</button>";
       }).join("") + "</div>" +
-      '<div class="exam-nav-legend"><span><i class="dot answered"></i> Answered</span><span><i class="dot flagged"></i> Flagged</span><span><i class="dot"></i> Unanswered</span></div>' +
-      '<button class="btn btn-secondary full-w" onclick="App.goToExamReview()">Review &amp; Submit</button>' +
+      (finished
+        ? '<div class="exam-nav-legend"><span><i class="dot correct"></i> Correct</span><span><i class="dot incorrect"></i> Incorrect</span></div>'
+        : '<div class="exam-nav-legend"><span><i class="dot answered"></i> Answered</span><span><i class="dot flagged"></i> Flagged</span><span><i class="dot"></i> Unanswered</span></div>') +
+      (finished
+        ? '<button class="btn btn-secondary full-w" onclick="App.navigate(\'exam-review\')">View All Answers</button>'
+        : '<button class="btn btn-secondary full-w" onclick="App.goToExamReview()">Review &amp; Submit</button>') +
       "</div></div>";
   }
 
   function renderExamReview() {
     if (!Exam) return renderExamSetup();
+    var finished = !!Exam.finished;
     var answeredCount = Exam.answers.filter(function (a) { return a.answered; }).length;
     var flaggedCount = Exam.answers.filter(function (a) { return a.flagged; }).length;
-    return '<div class="view-header"><h2>Review Your Answers</h2>' + renderExamTimerBadge() + "</div>" +
-      '<p class="muted">' + answeredCount + " of " + Exam.items.length + " answered" + (flaggedCount ? ", " + flaggedCount + " flagged" : "") + ". You can jump back to any question before submitting.</p>" +
-      '<div class="card table-scroll"><table class="review-table"><thead><tr><th>#</th><th>Section</th><th>Status</th><th>Flag</th><th></th></tr></thead><tbody>' +
+    var correctCount = finished ? Exam.answers.filter(function (a, i) { return a.answered && evaluateAnswerGeneric(Exam.items[i].q, a); }).length : 0;
+    return '<div class="view-header"><h2>Review Your Answers</h2>' + (finished ? "" : renderExamTimerBadge()) + "</div>" +
+      (finished
+        ? '<p class="muted">' + correctCount + " of " + Exam.items.length + " correct (" + answeredCount + " answered). Click \"Go\" to revisit any question with the explanation.</p>"
+        : '<p class="muted">' + answeredCount + " of " + Exam.items.length + " answered" + (flaggedCount ? ", " + flaggedCount + " flagged" : "") + ". You can jump back to any question before submitting.</p>") +
+      '<div class="card table-scroll"><table class="review-table"><thead><tr><th>#</th><th>Section</th><th>Status</th>' + (finished ? "" : "<th>Flag</th>") + '<th></th></tr></thead><tbody>' +
       Exam.items.map(function (it, i) {
         var a = Exam.answers[i];
-        return "<tr><td>" + (i + 1) + "</td><td>" + esc(it.sectionTitle) + "</td><td>" +
-          (a.answered ? '<span class="tag good">Answered</span>' : '<span class="tag bad">Unanswered</span>') + "</td><td>" +
-          (a.flagged ? svgIcon("flag", "flag-mark") : "") + '</td><td><button class="btn btn-secondary btn-sm" onclick="App.reviewJump(' + i + ')">Go</button></td></tr>';
+        var statusCell;
+        if (finished) {
+          var correct = a.answered && evaluateAnswerGeneric(it.q, a);
+          statusCell = correct ? '<span class="tag good">Correct</span>' : (a.answered ? '<span class="tag bad">Incorrect</span>' : '<span class="tag bad">Unanswered</span>');
+        } else {
+          statusCell = a.answered ? '<span class="tag good">Answered</span>' : '<span class="tag bad">Unanswered</span>';
+        }
+        return "<tr><td>" + (i + 1) + "</td><td>" + esc(it.sectionTitle) + "</td><td>" + statusCell + "</td>" +
+          (finished ? "" : "<td>" + (a.flagged ? svgIcon("flag", "flag-mark") : "") + "</td>") +
+          '<td><button class="btn btn-secondary btn-sm" onclick="App.reviewJump(' + i + ')">Go</button></td></tr>';
       }).join("") + "</tbody></table></div>" +
-      '<div class="btn-row"><button class="btn btn-secondary" onclick="App.navigate(\'exam-question\')">Back to Exam</button>' +
-      '<button class="btn btn-primary" onclick="App.confirmSubmitExam()">Submit Exam</button></div>';
+      (finished
+        ? '<div class="btn-row"><button class="btn btn-primary" onclick="App.navigate(\'exam-results\')">Back to Results</button></div>'
+        : '<div class="btn-row"><button class="btn btn-secondary" onclick="App.navigate(\'exam-question\')">Back to Exam</button>' +
+          '<button class="btn btn-primary" onclick="App.confirmSubmitExam()">Submit Exam</button></div>');
   }
 
   function renderExamResultsView() {
@@ -2478,6 +2509,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<div class="card"><h3>By Course</h3><div class="table-scroll"><table class="review-table"><thead><tr><th>Course</th><th>Score</th><th>%</th></tr></thead><tbody>' + courseRows + "</tbody></table></div></div>" +
       '<div class="card"><h3>By Section</h3><div class="table-scroll"><table class="review-table"><thead><tr><th>Course</th><th>Section</th><th>Score</th><th>%</th></tr></thead><tbody>' + sectionRows + "</tbody></table></div></div>" +
       '<div class="btn-row"><button class="btn btn-secondary" onclick="App.go(\'dashboard\')">Dashboard</button>' +
+      '<button class="btn btn-secondary" onclick="App.navigate(\'exam-review\')">Review Answers</button>' +
       '<button class="btn btn-primary" onclick="App.navigate(\'exam-setup\')">Take Another Exam</button></div>';
   }
 
