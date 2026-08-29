@@ -1496,10 +1496,16 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     if (!section) return;
     var allIdx = section.questions.map(function (_, i) { return i; });
     var unseen = allIdx.filter(function (i) { return !State.seenQuestions[missedKey(course, sectionId, i)]; });
-    var seen = allIdx.filter(function (i) { return !!State.seenQuestions[missedKey(course, sectionId, i)]; });
+    // Resuming an incomplete first pass through the module: continue with only what's
+    // left unseen, so the progress bar keeps climbing from where it left off instead of
+    // restarting a fresh 0%-of-total run. Once a pass is fully complete (or hasn't been
+    // started at all), a normal fresh full shuffle begins and seenBefore is 0.
+    var resuming = unseen.length > 0 && unseen.length < allIdx.length;
+    var order = resuming ? shuffleArr(unseen) : shuffleArr(allIdx);
+    var seenBefore = resuming ? allIdx.length - unseen.length : 0;
     Study = {
       course: course, sectionId: sectionId, section: section,
-      order: shuffleArr(unseen).concat(shuffleArr(seen)),
+      order: order, seenBefore: seenBefore,
       idx: 0, correctCount: 0, xpGained: 0, submitted: false, lastCorrect: false,
       userAnswer: null, matchPairing: {}, matchRightOrder: null, activeLeft: null
     };
@@ -2522,12 +2528,18 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var q = currentQuestionObj();
     var total = Study.order.length;
     var num = Study.idx + 1;
+    var seenBefore = Study.seenBefore || 0;
+    // when resuming a partial pass, show progress against the whole module (not just
+    // this session's remaining questions) so the bar keeps climbing instead of
+    // restarting at 0% -- see startStudySection().
+    var displayTotal = seenBefore > 0 ? Study.section.questions.length : total;
+    var displayNum = num + seenBefore;
     var showResult = Study.submitted;
     return '<div class="view-header">' +
       '<button class="link-btn" onclick="App.exitStudy()">' + svgIcon("chevron", "flip") + " Back to sections</button>" +
       "<h2>" + esc(Study.section.title) + '</h2><span class="kind-badge kind-' + Study.section.kind + '">' + Study.section.kind + "</span></div>" +
-      '<div class="progress-track"><div class="progress-fill" style="width:' + Math.round((num - 1) / total * 100) + '%"></div></div>' +
-      '<div class="q-progress-label">Question ' + num + " of " + total + "</div>" +
+      '<div class="progress-track"><div class="progress-fill" style="width:' + Math.round((displayNum - 1) / displayTotal * 100) + '%"></div></div>' +
+      '<div class="q-progress-label">Question ' + displayNum + " of " + displayTotal + "</div>" +
       '<div class="card question-card ' + (showResult ? (Study.lastCorrect ? "result-correct" : "result-incorrect") : "") + '">' +
       renderQuestionPrompt(q) +
       renderQuestionInputArea(q, Study, showResult) +
