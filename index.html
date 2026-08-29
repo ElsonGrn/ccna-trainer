@@ -757,6 +757,26 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     saveState(true);
   }
 
+  // Login/register already pull fresh state, but a device that stays logged in
+  // across visits otherwise never re-fetches -- it just keeps showing whatever
+  // was last saved to *this* device's localStorage. That's how progress made on
+  // one device (e.g. a longer streak) can look stale/behind on another device
+  // that hasn't been reopened since. Pull the server's copy once at startup so
+  // every device reconciles to the same source of truth before you start using it.
+  function pullStateFromServer() {
+    if (!isLoggedIn()) return;
+    apiFetch("/api/state")
+      .then(function (resp) {
+        if (resp && resp.state) {
+          applyServerState(resp.state);
+          render();
+        }
+      })
+      .catch(function () {
+        // offline or transient failure -- keep using local state, next save will resync
+      });
+  }
+
   /* =========================================================
      SMALL UTILITIES
      ========================================================= */
@@ -2929,6 +2949,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   function init() {
     buildShell();
     navigate("dashboard");
+    pullStateFromServer();
   }
 
   if (document.readyState === "loading") {
