@@ -1285,6 +1285,15 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     }
   }
 
+  // Answer options are shuffled once per question viewing (not re-shuffled on every
+  // re-render) so the on-screen order never tips off the correct answer by position,
+  // while staying stable while you're deciding and across Prev/Next in an exam.
+  function prepOptionOrderIfNeeded(q, container) {
+    if ((q.type === "single" || q.type === "multi") && !container.optionOrder) {
+      container.optionOrder = shuffleArr(q.options.map(function (_, i) { return i; }));
+    }
+  }
+
   function canSubmitCurrent() {
     var q = currentQuestionObj();
     var c = getAnswerContainer();
@@ -1375,36 +1384,41 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     return renderExhibit(q.exhibit) + '<div class="q-text">' + esc(q.q) + "</div>" + hint;
   }
 
-  function renderSingleInput(q, selected, showResult) {
-    return '<div class="options">' + q.options.map(function (opt, i) {
+  function renderSingleInput(q, container, showResult) {
+    var selected = container.userAnswer;
+    var order = container.optionOrder || q.options.map(function (_, i) { return i; });
+    return '<div class="options">' + order.map(function (origIdx, displayIdx) {
+      var opt = q.options[origIdx];
       var cls = "option-row";
-      if (!showResult && selected === i) cls += " selected";
+      if (!showResult && selected === origIdx) cls += " selected";
       if (showResult) {
-        if (i === q.correct) cls += " correct";
-        else if (i === selected) cls += " incorrect";
+        if (origIdx === q.correct) cls += " correct";
+        else if (origIdx === selected) cls += " incorrect";
       }
       var disabled = showResult ? "disabled" : "";
-      return '<button class="' + cls + '" ' + disabled + ' onclick="App.setAnswer(' + i + ')">' +
-        '<span class="option-marker">' + String.fromCharCode(65 + i) + '</span>' +
+      return '<button class="' + cls + '" ' + disabled + ' onclick="App.setAnswer(' + origIdx + ')">' +
+        '<span class="option-marker">' + String.fromCharCode(65 + displayIdx) + '</span>' +
         '<span class="option-text">' + esc(opt) + '</span>' +
-        (showResult && i === q.correct ? svgIcon("check", "opt-icon") : "") +
+        (showResult && origIdx === q.correct ? svgIcon("check", "opt-icon") : "") +
         '</button>';
     }).join("") + "</div>";
   }
 
-  function renderMultiInput(q, selected, showResult) {
-    var sel = selected || [];
-    return '<div class="options">' + q.options.map(function (opt, i) {
-      var isSel = sel.indexOf(i) !== -1;
+  function renderMultiInput(q, container, showResult) {
+    var sel = container.userAnswer || [];
+    var order = container.optionOrder || q.options.map(function (_, i) { return i; });
+    return '<div class="options">' + order.map(function (origIdx) {
+      var opt = q.options[origIdx];
+      var isSel = sel.indexOf(origIdx) !== -1;
       var cls = "option-row multi";
       if (!showResult && isSel) cls += " selected";
-      var shouldBe = q.correct.indexOf(i) !== -1;
+      var shouldBe = q.correct.indexOf(origIdx) !== -1;
       if (showResult) {
         if (shouldBe) cls += " correct";
         else if (isSel) cls += " incorrect";
       }
       var disabled = showResult ? "disabled" : "";
-      return '<button class="' + cls + '" ' + disabled + ' onclick="App.toggleMulti(' + i + ')">' +
+      return '<button class="' + cls + '" ' + disabled + ' onclick="App.toggleMulti(' + origIdx + ')">' +
         '<span class="option-check">' + (isSel ? svgIcon("check") : "") + '</span>' +
         '<span class="option-text">' + esc(opt) + '</span>' +
         (showResult && shouldBe ? svgIcon("check", "opt-icon") : "") +
@@ -1478,8 +1492,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   }
 
   function renderQuestionInputArea(q, container, showResult) {
-    if (q.type === "single") return renderSingleInput(q, container.userAnswer, showResult);
-    if (q.type === "multi") return renderMultiInput(q, container.userAnswer, showResult);
+    if (q.type === "single") { prepOptionOrderIfNeeded(q, container); return renderSingleInput(q, container, showResult); }
+    if (q.type === "multi") { prepOptionOrderIfNeeded(q, container); return renderMultiInput(q, container, showResult); }
     if (q.type === "tf") return renderTFInput(q, container.userAnswer, showResult);
     if (q.type === "blank") return renderBlankInput(q, container.userAnswer, showResult);
     if (q.type === "match") { prepMatchIfNeeded(q); return renderMatchInput(q, container, showResult); }
@@ -1507,7 +1521,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       course: course, sectionId: sectionId, section: section,
       order: order, seenBefore: seenBefore,
       idx: 0, correctCount: 0, xpGained: 0, submitted: false, lastCorrect: false,
-      userAnswer: null, matchPairing: {}, matchRightOrder: null, activeLeft: null
+      userAnswer: null, matchPairing: {}, matchRightOrder: null, optionOrder: null, activeLeft: null
     };
     navigate("study-question");
   }
@@ -1522,7 +1536,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       section: { id: "__mix__", title: "Random Mix: All Modules & Exams", kind: "mix", questions: pool.map(function (item) { return item.q; }) },
       order: shuffleArr(pool.map(function (_, i) { return i; })),
       idx: 0, correctCount: 0, xpGained: 0, submitted: false, lastCorrect: false,
-      userAnswer: null, matchPairing: {}, matchRightOrder: null, activeLeft: null
+      userAnswer: null, matchPairing: {}, matchRightOrder: null, optionOrder: null, activeLeft: null
     };
     navigate("study-question");
   }
@@ -1581,7 +1595,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       section: { id: "__review__", title: "Review Mistakes", kind: "mix", questions: pool.map(function (item) { return item.q; }) },
       order: shuffleArr(pool.map(function (_, i) { return i; })),
       idx: 0, correctCount: 0, xpGained: 0, submitted: false, lastCorrect: false,
-      userAnswer: null, matchPairing: {}, matchRightOrder: null, activeLeft: null
+      userAnswer: null, matchPairing: {}, matchRightOrder: null, optionOrder: null, activeLeft: null
     };
     navigate("study-question");
   }
@@ -1614,6 +1628,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       Study.userAnswer = null;
       Study.matchPairing = {};
       Study.matchRightOrder = null;
+      Study.optionOrder = null;
       Study.activeLeft = null;
       render();
     } else {
@@ -1656,7 +1671,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     Exam = {
       requested: len,
       items: items,
-      answers: items.map(function () { return { answered: false, flagged: false, userAnswer: null, matchRightOrder: null, matchPairing: {}, activeLeft: null }; }),
+      answers: items.map(function () { return { answered: false, flagged: false, userAnswer: null, matchRightOrder: null, optionOrder: null, matchPairing: {}, activeLeft: null }; }),
       idx: 0,
       startTime: Date.now(),
       finished: false
@@ -1671,7 +1686,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     Exam = {
       requested: "ccna_sim",
       items: items,
-      answers: items.map(function () { return { answered: false, flagged: false, userAnswer: null, matchRightOrder: null, matchPairing: {}, activeLeft: null }; }),
+      answers: items.map(function () { return { answered: false, flagged: false, userAnswer: null, matchRightOrder: null, optionOrder: null, matchPairing: {}, activeLeft: null }; }),
       idx: 0,
       startTime: Date.now(),
       finished: false,
