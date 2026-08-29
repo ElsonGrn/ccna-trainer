@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CCNA Trainer — 200-301 Exam Prep</title>
+<title>CCNA Trainer: 200-301 Exam Prep</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23049fd9'/%3E%3Ctext x='12' y='16.5' font-size='11' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EC%3C/text%3E%3C/svg%3E">
 <script>
 (function () {
@@ -948,7 +948,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     if (afterLevel > beforeLevel) {
       var coinsGained = (afterLevel - beforeLevel) * LEVEL_UP_COINS;
       State.coins += coinsGained;
-      showToast("Level " + afterLevel + "!", "+" + coinsGained + " Cisco Coins earned — spend them in the Shop.", "coins");
+      showToast("Level " + afterLevel + "!", "+" + coinsGained + " Cisco Coins earned. Spend them in the Shop.", "coins");
     }
     saveState();
   }
@@ -1519,7 +1519,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     if (pool.length === 0) return;
     Study = {
       course: null, sectionId: null, mixed: true, pool: pool,
-      section: { id: "__mix__", title: "Random Mix — All Modules & Exams", kind: "mix", questions: pool.map(function (item) { return item.q; }) },
+      section: { id: "__mix__", title: "Random Mix: All Modules & Exams", kind: "mix", questions: pool.map(function (item) { return item.q; }) },
       order: shuffleArr(pool.map(function (_, i) { return i; })),
       idx: 0, correctCount: 0, xpGained: 0, submitted: false, lastCorrect: false,
       userAnswer: null, matchPairing: {}, matchRightOrder: null, activeLeft: null
@@ -1832,7 +1832,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       (isLoggedIn()
         ? '<div class="account-divider"></div>' +
           "<h4>Leaderboard Name</h4>" +
-          '<p class="muted small">This name is shown publicly on the Leaderboard next to your XP — your email is never shown. Leave it blank to stay anonymous as “' + esc(Account.randomName || "an auto-generated name") + '”.</p>' +
+          '<p class="muted small">This name is shown publicly on the Leaderboard next to your XP. Your email is never shown. Leave it blank to stay anonymous as “' + esc(Account.randomName || "an auto-generated name") + '”.</p>' +
           (SettingsUI.usernameError ? '<p class="account-error">' + esc(SettingsUI.usernameError) + "</p>" : "") +
           '<input class="blank-input" type="text" id="usernameInput" maxlength="24" placeholder="' + esc(Account.randomName || "Anonymous") + '" value="' + esc(Account.username || "") + '">' +
           '<div class="btn-row">' +
@@ -1842,7 +1842,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<div class="account-divider"></div>' +
       (!confirming
         ? '<button class="btn btn-danger" onclick="App.confirmResetStep()">Reset all progress</button>'
-        : '<div class="confirm-box"><p><strong>Are you sure?</strong> This permanently erases your XP, streaks, mastery stats, badges, and exam history' + (isLoggedIn() ? " — on this device and in your account" : " on this device") + '.</p>' +
+        : '<div class="confirm-box"><p><strong>Are you sure?</strong> This permanently erases your XP, streaks, mastery stats, badges, and exam history' + (isLoggedIn() ? ", on this device and in your account" : " on this device") + '.</p>' +
           '<div class="btn-row"><button class="btn btn-secondary" onclick="App.cancelResetStep()">Cancel</button>' +
           '<button class="btn btn-danger" onclick="App.doReset()">Yes, erase everything</button></div></div>') +
       "</div></div>";
@@ -1896,7 +1896,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     if (isLoggedIn()) pushStateToServer();
     closeModal();
     navigate("dashboard");
-    showToast("Progress reset", "Starting fresh — good luck!", "info");
+    showToast("Progress reset", "Starting fresh. Good luck!", "info");
   }
 
   /* =========================================================
@@ -1933,7 +1933,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     return '<div class="modal">' +
       '<div class="modal-head"><h3>' + (isRegister ? "Create Account" : "Log In") + '</h3><button class="icon-btn" aria-label="Close" onclick="App.closeModal()">' + svgIcon("close") + '</button></div>' +
       '<div class="modal-body">' +
-      '<p class="muted">Login to track your progress across devices. This is optional — without an account, your progress still saves in this browser, it just won\'t follow you anywhere else.</p>' +
+      '<p class="muted">Login to track your progress across devices. This is optional. Without an account, your progress still saves in this browser, it just won\'t follow you anywhere else.</p>' +
       (AccountUI.error ? '<p class="account-error">' + esc(AccountUI.error) + "</p>" : "") +
       '<input class="blank-input acct-field" type="email" id="acctEmail" placeholder="Email" autocomplete="email">' +
       '<input class="blank-input acct-field" type="password" id="acctPassword" placeholder="Password (min 8 characters)" autocomplete="' + (isRegister ? "new-password" : "current-password") + '">' +
@@ -1976,7 +1976,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     AccountUI.busy = true; AccountUI.error = null;
     renderModal(accountModalHTML());
     apiFetch("/api/login", { method: "POST", body: { email: f.email, password: f.password } })
-      .then(function (resp) { onAuthSuccess(resp, "Welcome back — your progress has been loaded."); })
+      .then(function (resp) { onAuthSuccess(resp, "Welcome back. Your progress has been loaded."); })
       .catch(function (e) { AccountUI.busy = false; AccountUI.error = e.message; renderModal(accountModalHTML()); });
   }
 
@@ -2165,7 +2165,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
      ========================================================= */
   function renderLeaderboardView() {
     return '<div class="view-header"><h2>Leaderboard</h2></div>' +
-      '<p class="muted">Ranked by XP across everyone with an account. Only a display name is ever shown — never your email.' +
+      '<p class="muted">Ranked by XP across everyone with an account. Only a display name is ever shown, never your email.' +
       (isLoggedIn() ? " You're currently shown as “" + esc(leaderboardDisplayName()) + "” (change this in Settings)." : " Log in to appear here.") + "</p>" +
       '<div id="leaderboardBody" class="card"><p class="muted small">Loading…</p></div>';
   }
@@ -2188,7 +2188,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
         if (!el) return; // user already navigated away
         var rows = resp.leaderboard || [];
         if (rows.length === 0) {
-          el.innerHTML = '<p class="muted small">No one has an account yet — be the first!</p>';
+          el.innerHTML = '<p class="muted small">No one has an account yet. Be the first!</p>';
           return;
         }
         el.innerHTML = '<div class="table-scroll"><table class="review-table"><thead><tr><th>#</th><th>Name</th><th>Level</th><th>XP</th><th>Correct Answers</th></tr></thead><tbody>' +
@@ -2229,9 +2229,9 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     }).join("");
 
     return '<div class="view-header"><h2>Shop</h2><span class="coin-balance">' + svgIcon("coin") + " " + State.coins + "</span></div>" +
-      '<p class="muted">Earn Cisco Coins every time you level up (' + LEVEL_UP_COINS + ' per level). Spend them on cosmetics for your study companion — purely for fun, no gameplay effect.</p>' +
+      '<p class="muted">Earn Cisco Coins every time you level up (' + LEVEL_UP_COINS + ' per level). Spend them on cosmetics for your study companion, purely for fun with no gameplay effect.</p>' +
       (ownedCount > 0 && !hasAnyEquipped()
-        ? '<p class="muted small">Nothing equipped yet — equip an owned item below.</p>'
+        ? '<p class="muted small">Nothing equipped yet. Equip an owned item below.</p>'
         : "") +
       categoriesHtml;
   }
@@ -2253,11 +2253,11 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var msg;
     if (diffDays > 1) msg = diffDays + " days until your CCNA exam target";
     else if (diffDays === 1) msg = "1 day until your CCNA exam target";
-    else if (diffDays === 0) msg = "Your CCNA exam target is today — good luck!";
-    else msg = "Your target date has passed — keep studying, or set a new date!";
+    else if (diffDays === 0) msg = "Your CCNA exam target is today. Good luck!";
+    else msg = "Your target date has passed. Keep studying, or set a new date!";
     var formatted = target.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
     return '<div class="banner-countdown">' +
-      '<div class="banner-countdown-num">' + (diffDays >= 0 ? diffDays : "—") + "</div>" +
+      '<div class="banner-countdown-num">' + (diffDays >= 0 ? diffDays : "-") + "</div>" +
       '<div class="banner-countdown-text"><strong>' + esc(msg) + "</strong><span>Target: " + esc(formatted) + "</span></div>" +
       "</div>";
   }
@@ -2306,7 +2306,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
 
   function renderFocusToday() {
     var items = computeFocusSections();
-    if (items.length === 0) return '<p class="muted">Nothing to focus on yet — start studying!</p>';
+    if (items.length === 0) return '<p class="muted">Nothing to focus on yet. Start studying!</p>';
     return '<div class="focus-list">' + items.map(function (it) {
       return '<div class="focus-item"><div class="focus-info">' +
         '<span class="kind-badge kind-' + it.kind + '">' + it.kind + "</span>" +
@@ -2336,7 +2336,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
           return '<button class="mastery-chip tier-' + tier + '" onclick="App.jumpStudy(' + jsStr(c) + "," + jsStr(sec.id) + ')" title="' + esc(sec.title) + '">' +
             '<span class="mastery-chip-kind">' + sec.kind + "</span>" +
             '<span class="mastery-chip-title">' + esc(sec.title) + "</span>" +
-            '<span class="mastery-chip-pct">' + (tier !== "notstarted" ? pct + "%" : "—") + "</span>" +
+            '<span class="mastery-chip-pct">' + (tier !== "notstarted" ? pct + "%" : "-") + "</span>" +
             "</button>";
         }).join("") + "</div></div>";
     }).join("");
@@ -2386,7 +2386,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       var tier = masteryTier(s.stat);
       return '<div class="card section-row"><div class="section-row-main">' +
         '<span class="kind-badge kind-' + s.kind + '">' + s.kind + "</span>" +
-        '<span class="section-title">' + esc(DATA[s.course].title) + " — " + esc(s.title) + "</span>" +
+        '<span class="section-title">' + esc(DATA[s.course].title) + " &middot; " + esc(s.title) + "</span>" +
         "</div><div class=\"section-row-side\">" +
         '<span class="tier-chip tier-' + tier + '">' + tierLabel(tier) + " &middot; " + s.pct + "%</span>" +
         "</div></div>";
@@ -2423,7 +2423,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       });
       var acc = totalAttempts > 0 ? Math.round(100 * totalCorrect / totalAttempts) : 0;
       return "<tr><td>" + esc(DATA[c].title) + "</td><td>" + attemptedSecs + "/" + secs.length + "</td><td>" + totalAttempts +
-        "</td><td>" + (totalAttempts > 0 ? acc + "%" : "—") + "</td><td>" + courseAvgMastery(c) + "%</td></tr>";
+        "</td><td>" + (totalAttempts > 0 ? acc + "%" : "-") + "</td><td>" + courseAvgMastery(c) + "%</td></tr>";
     }).join("");
 
     var examCount = State.examHistory.length;
@@ -2608,9 +2608,9 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<div class="ccna-sim-desc">' + CCNA_SIM_LENGTH + " questions in " + Math.round(CCNA_SIM_TIME_LIMIT_MS / 60000) +
       " minutes, sampled proportionally across the official CCNA 200-301 v1.1 exam blueprint (" +
       BLUEPRINT_DOMAINS.map(function (d) { return Math.round(d.weight * 100) + "% " + d.name.replace(/^[0-9.]+\s*/, ""); }).join(", ") +
-      "). Multiple choice and matching only, like the real exam — no true/false or fill-in-the-blank. Auto-submits when time runs out. Score " + Math.round(CCNA_SIM_PASS_PCT * 100) + "%+ to earn the <strong>You Passed</strong> badge.</div>" +
+      "). Multiple choice and matching only, like the real exam, with no true/false or fill-in-the-blank. Auto-submits when time runs out. Score " + Math.round(CCNA_SIM_PASS_PCT * 100) + "%+ to earn the <strong>You Passed</strong> badge.</div>" +
       "</button>" +
-      '<p class="muted">Or choose a length for an untimed practice exam. Questions are drawn randomly but proportionally across ITN, SRWE, and ENSA — approximating the real exam\'s mixed blueprint. No timer, but we\'ll track how long you take.</p>' +
+      '<p class="muted">Or choose a length for an untimed practice exam. Questions are drawn randomly but proportionally across ITN, SRWE, and ENSA, approximating the real exam\'s mixed blueprint. No timer, but we\'ll track how long you take.</p>' +
       '<div class="exam-len-grid">' +
       opts.map(function (n) {
         return '<button class="card exam-len-card" onclick="App.startExam(' + n + ')"><div class="exam-len-num">' + Math.min(n, total) + '</div><div class="exam-len-lbl">Questions</div></button>';
