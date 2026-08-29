@@ -2158,10 +2158,10 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
           el.innerHTML = '<p class="muted small">No one has an account yet — be the first!</p>';
           return;
         }
-        el.innerHTML = '<div class="table-scroll"><table class="review-table"><thead><tr><th>#</th><th>Name</th><th>Level</th><th>XP</th></tr></thead><tbody>' +
+        el.innerHTML = '<div class="table-scroll"><table class="review-table"><thead><tr><th>#</th><th>Name</th><th>Level</th><th>XP</th><th>Correct Answers</th></tr></thead><tbody>' +
           rows.map(function (r) {
             return '<tr class="' + (r.isYou ? "leaderboard-you" : "") + '"><td>' + r.rank + "</td><td>" + esc(r.displayName) +
-              (r.isYou ? ' <span class="tag good">You</span>' : "") + "</td><td>" + r.level + "</td><td>" + r.xp + "</td></tr>";
+              (r.isYou ? ' <span class="tag good">You</span>' : "") + "</td><td>" + r.level + "</td><td>" + r.xp + "</td><td>" + (r.correct || 0) + "</td></tr>";
           }).join("") + "</tbody></table></div>";
       })
       .catch(function () {
