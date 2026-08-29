@@ -1559,13 +1559,14 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     else State.missedQuestions[key] = true;
   }
 
-  /* Tracks which questions within a single-module Study session have
-     ever been answered (right or wrong), keyed the same way as
-     missedQuestions. Only set for regular per-module study (not
-     Random Mix or Review Mistakes) so a resumed module session can
-     surface never-seen questions before repeating ones -- picking
-     up module coverage where an abandoned session (tab closed,
-     navigated away) left off. */
+  /* Tracks which questions within a module have ever been answered
+     (right or wrong), keyed the same way as missedQuestions. Set from
+     any answering context -- regular per-module study, Random Mix, or
+     Review Mistakes -- since answering a question anywhere means
+     you've genuinely seen it. A resumed module session then surfaces
+     never-seen questions before repeating ones, picking up module
+     coverage where an abandoned session (tab closed, navigated away)
+     left off. */
   function markQuestionSeen(course, sectionId, qIndex) {
     State.seenQuestions[missedKey(course, sectionId, qIndex)] = true;
   }
@@ -1612,7 +1613,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     addXP(xp);
     var meta = currentQuestionMeta();
     updateMissedQuestions(meta.course, meta.sectionId, meta.qIndex, isCorrect);
-    if (!Study.mixed) markQuestionSeen(meta.course, meta.sectionId, meta.qIndex);
+    markQuestionSeen(meta.course, meta.sectionId, meta.qIndex);
     recordAnswer(meta.course, meta.sectionId, isCorrect);
     touchActivity();
     render();
