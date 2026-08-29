@@ -2170,6 +2170,15 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<div id="leaderboardBody" class="card"><p class="muted small">Loading…</p></div>';
   }
 
+  var leaderboardRefreshTimer = null;
+  function stopLeaderboardRefresh() {
+    if (leaderboardRefreshTimer) { clearInterval(leaderboardRefreshTimer); leaderboardRefreshTimer = null; }
+  }
+  function startLeaderboardRefresh() {
+    stopLeaderboardRefresh();
+    leaderboardRefreshTimer = setInterval(loadLeaderboard, 10000);
+  }
+
   function loadLeaderboard() {
     var body = document.getElementById("leaderboardBody");
     if (!body) return;
@@ -2841,7 +2850,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     updateNavActive();
     updateNavQuickStats();
     updateGlobalCompanion();
-    if (Router.current.name === "leaderboard") loadLeaderboard();
+    if (Router.current.name === "leaderboard") { loadLeaderboard(); startLeaderboardRefresh(); }
+    else stopLeaderboardRefresh();
   }
 
   /* =========================================================
