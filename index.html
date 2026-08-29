@@ -615,6 +615,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     mixSessionsCompleted: LS_PREFIX + "mixSessionsCompleted",
     perfectMixLarge: LS_PREFIX + "perfectMixLarge",
     missedQuestions: LS_PREFIX + "missedQuestions",
+    seenQuestions: LS_PREFIX + "seenQuestions",
     examDate: LS_PREFIX + "examDate",
     coins: LS_PREFIX + "coins",
     ownedItems: LS_PREFIX + "ownedItems",
@@ -628,7 +629,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       sectionStats: {}, badges: [], examHistory: [], lifetimeAnswered: 0,
       lifetimeCorrect: 0, perfectSection: false,
       mixSessionsCompleted: 0, perfectMixLarge: false,
-      missedQuestions: {}, examDate: null,
+      missedQuestions: {}, seenQuestions: {}, examDate: null,
       coins: 0, ownedItems: [], equipped: { pet: null, hat: null, clothing: null }
     };
   }
@@ -649,6 +650,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       mixSessionsCompleted: lsGet(LS_KEYS.mixSessionsCompleted, 0),
       perfectMixLarge: lsGet(LS_KEYS.perfectMixLarge, false),
       missedQuestions: lsGet(LS_KEYS.missedQuestions, {}),
+      seenQuestions: lsGet(LS_KEYS.seenQuestions, {}),
       examDate: lsGet(LS_KEYS.examDate, null),
       coins: lsGet(LS_KEYS.coins, 0),
       ownedItems: lsGet(LS_KEYS.ownedItems, []),
@@ -671,6 +673,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     lsSet(LS_KEYS.mixSessionsCompleted, State.mixSessionsCompleted);
     lsSet(LS_KEYS.perfectMixLarge, State.perfectMixLarge);
     lsSet(LS_KEYS.missedQuestions, State.missedQuestions);
+    lsSet(LS_KEYS.seenQuestions, State.seenQuestions);
     lsSet(LS_KEYS.examDate, State.examDate);
     lsSet(LS_KEYS.coins, State.coins);
     lsSet(LS_KEYS.ownedItems, State.ownedItems);
@@ -1491,9 +1494,12 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   function startStudySection(course, sectionId) {
     var section = DATA[course].sections.filter(function (s) { return s.id === sectionId; })[0];
     if (!section) return;
+    var allIdx = section.questions.map(function (_, i) { return i; });
+    var unseen = allIdx.filter(function (i) { return !State.seenQuestions[missedKey(course, sectionId, i)]; });
+    var seen = allIdx.filter(function (i) { return !!State.seenQuestions[missedKey(course, sectionId, i)]; });
     Study = {
       course: course, sectionId: sectionId, section: section,
-      order: shuffleArr(section.questions.map(function (_, i) { return i; })),
+      order: shuffleArr(unseen).concat(shuffleArr(seen)),
       idx: 0, correctCount: 0, xpGained: 0, submitted: false, lastCorrect: false,
       userAnswer: null, matchPairing: {}, matchRightOrder: null, activeLeft: null
     };
@@ -1531,6 +1537,17 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     var key = missedKey(course, sectionId, qIndex);
     if (isCorrect) delete State.missedQuestions[key];
     else State.missedQuestions[key] = true;
+  }
+
+  /* Tracks which questions within a single-module Study session have
+     ever been answered (right or wrong), keyed the same way as
+     missedQuestions. Only set for regular per-module study (not
+     Random Mix or Review Mistakes) so a resumed module session can
+     surface never-seen questions before repeating ones -- picking
+     up module coverage where an abandoned session (tab closed,
+     navigated away) left off. */
+  function markQuestionSeen(course, sectionId, qIndex) {
+    State.seenQuestions[missedKey(course, sectionId, qIndex)] = true;
   }
 
   function currentQuestionMeta() {
@@ -1575,6 +1592,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     addXP(xp);
     var meta = currentQuestionMeta();
     updateMissedQuestions(meta.course, meta.sectionId, meta.qIndex, isCorrect);
+    if (!Study.mixed) markQuestionSeen(meta.course, meta.sectionId, meta.qIndex);
     recordAnswer(meta.course, meta.sectionId, isCorrect);
     touchActivity();
     render();
