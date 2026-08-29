@@ -197,6 +197,7 @@
   .review-table { font-size: 0.88rem; }
   .review-table th { text-align:left; color: var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.4px; padding: 8px 10px; border-bottom: 2px solid var(--border); }
   .review-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); white-space:nowrap; }
+  .review-table tr.leaderboard-you td { background: var(--cisco-blue-light); font-weight:700; }
   .tag { font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:20px; }
   .tag.good { background: var(--green-bg); color: var(--green); }
   .tag.bad { background: var(--red-bg); color: var(--red); }
@@ -689,15 +690,29 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   var API_BASE = "https://ccna-api.estmain.net";
   var AUTH_TOKEN_KEY = LS_PREFIX + "authToken";
   var AUTH_EMAIL_KEY = LS_PREFIX + "authEmail";
-  var Account = { token: lsGet(AUTH_TOKEN_KEY, null), email: lsGet(AUTH_EMAIL_KEY, null) };
+  var AUTH_USERNAME_KEY = LS_PREFIX + "authUsername";
+  var AUTH_RANDOMNAME_KEY = LS_PREFIX + "authRandomName";
+  var Account = {
+    token: lsGet(AUTH_TOKEN_KEY, null),
+    email: lsGet(AUTH_EMAIL_KEY, null),
+    username: lsGet(AUTH_USERNAME_KEY, null),
+    randomName: lsGet(AUTH_RANDOMNAME_KEY, null)
+  };
   var AccountUI = { mode: "login", error: null, busy: false };
+  var SettingsUI = { usernameError: null, usernameBusy: false };
   var syncTimer = null;
 
   function isLoggedIn() { return !!Account.token; }
 
+  function leaderboardDisplayName() {
+    return Account.username || Account.randomName || "Anonymous";
+  }
+
   function persistAccount() {
     lsSet(AUTH_TOKEN_KEY, Account.token);
     lsSet(AUTH_EMAIL_KEY, Account.email);
+    lsSet(AUTH_USERNAME_KEY, Account.username);
+    lsSet(AUTH_RANDOMNAME_KEY, Account.randomName);
   }
 
   function apiFetch(path, opts) {
@@ -1772,7 +1787,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     root.innerHTML = "";
   }
 
-  function openSettings() { renderModal(settingsModalHTML(false)); }
+  function openSettings() { SettingsUI = { usernameError: null, usernameBusy: false }; renderModal(settingsModalHTML(false)); }
   function confirmResetStep() { renderModal(settingsModalHTML(true)); }
   function cancelResetStep() { renderModal(settingsModalHTML(false)); }
 
@@ -1790,6 +1805,16 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<button class="btn btn-primary" onclick="App.saveExamDate()">' + (State.examDate ? "Update Date" : "Set Date") + '</button>' +
       (State.examDate ? '<button class="btn btn-secondary" onclick="App.clearExamDate()">Clear</button>' : "") +
       "</div>" +
+      (isLoggedIn()
+        ? '<div class="account-divider"></div>' +
+          "<h4>Leaderboard Name</h4>" +
+          '<p class="muted small">This name is shown publicly on the Leaderboard next to your XP — your email is never shown. Leave it blank to stay anonymous as “' + esc(Account.randomName || "an auto-generated name") + '”.</p>' +
+          (SettingsUI.usernameError ? '<p class="account-error">' + esc(SettingsUI.usernameError) + "</p>" : "") +
+          '<input class="blank-input" type="text" id="usernameInput" maxlength="24" placeholder="' + esc(Account.randomName || "Anonymous") + '" value="' + esc(Account.username || "") + '">' +
+          '<div class="btn-row">' +
+          '<button class="btn btn-primary" ' + (SettingsUI.usernameBusy ? "disabled" : "") + ' onclick="App.saveUsername()">' + (SettingsUI.usernameBusy ? "Saving…" : "Save Name") + "</button>" +
+          "</div>"
+        : "") +
       '<div class="account-divider"></div>' +
       (!confirming
         ? '<button class="btn btn-danger" onclick="App.confirmResetStep()">Reset all progress</button>'
@@ -1814,6 +1839,26 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     closeModal();
     render();
     showToast("Exam date cleared", "", "info");
+  }
+
+  function saveUsername() {
+    if (!isLoggedIn()) return;
+    var val = (document.getElementById("usernameInput") || {}).value || "";
+    SettingsUI.usernameBusy = true; SettingsUI.usernameError = null;
+    renderModal(settingsModalHTML(false));
+    apiFetch("/api/username", { method: "PUT", body: { username: val.trim() } })
+      .then(function (resp) {
+        Account.username = resp.username || null;
+        persistAccount();
+        SettingsUI.usernameBusy = false;
+        closeModal();
+        showToast("Leaderboard name updated", "Now shown as “" + (resp.displayName || leaderboardDisplayName()) + "”.", "info");
+      })
+      .catch(function (e) {
+        SettingsUI.usernameBusy = false;
+        SettingsUI.usernameError = e.message;
+        renderModal(settingsModalHTML(false));
+      });
   }
 
   function doReset() {
@@ -1914,6 +1959,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   function onAuthSuccess(resp, toastMsg) {
     Account.token = resp.token;
     Account.email = resp.email;
+    Account.username = resp.username || null;
+    Account.randomName = resp.randomName || null;
     persistAccount();
     var serverState = resp.state || {};
     var serverHasProgress = (serverState.lifetimeAnswered || 0) > 0 || (serverState.xp || 0) > 0;
@@ -1933,6 +1980,8 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
   function logoutAccount() {
     Account.token = null;
     Account.email = null;
+    Account.username = null;
+    Account.randomName = null;
     persistAccount();
     if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }
     closeModal();
@@ -2079,6 +2128,46 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       stage.classList.remove("reacting");
       if (petLayer && petItem) petLayer.innerHTML = cosmeticArt(petItem.icon);
     }, 700);
+  }
+
+  /* =========================================================
+     LEADERBOARD
+     Public (no login required to view), ranked by XP across every
+     account. The API only ever returns a display name (the user's
+     chosen username, or an auto-generated anonymous fallback) plus
+     xp/level -- never an email or account id. Loaded async since it
+     needs a network round-trip, so the view starts with a loading
+     placeholder and patches #leaderboardBody in place.
+     ========================================================= */
+  function renderLeaderboardView() {
+    return '<div class="view-header"><h2>Leaderboard</h2></div>' +
+      '<p class="muted">Ranked by XP across everyone with an account. Only a display name is ever shown — never your email.' +
+      (isLoggedIn() ? " You're currently shown as “" + esc(leaderboardDisplayName()) + "” (change this in Settings)." : " Log in to appear here.") + "</p>" +
+      '<div id="leaderboardBody" class="card"><p class="muted small">Loading…</p></div>';
+  }
+
+  function loadLeaderboard() {
+    var body = document.getElementById("leaderboardBody");
+    if (!body) return;
+    apiFetch("/api/leaderboard")
+      .then(function (resp) {
+        var el = document.getElementById("leaderboardBody");
+        if (!el) return; // user already navigated away
+        var rows = resp.leaderboard || [];
+        if (rows.length === 0) {
+          el.innerHTML = '<p class="muted small">No one has an account yet — be the first!</p>';
+          return;
+        }
+        el.innerHTML = '<div class="table-scroll"><table class="review-table"><thead><tr><th>#</th><th>Name</th><th>Level</th><th>XP</th></tr></thead><tbody>' +
+          rows.map(function (r) {
+            return '<tr class="' + (r.isYou ? "leaderboard-you" : "") + '"><td>' + r.rank + "</td><td>" + esc(r.displayName) +
+              (r.isYou ? ' <span class="tag good">You</span>' : "") + "</td><td>" + r.level + "</td><td>" + r.xp + "</td></tr>";
+          }).join("") + "</tbody></table></div>";
+      })
+      .catch(function () {
+        var el = document.getElementById("leaderboardBody");
+        if (el) el.innerHTML = '<p class="muted small">Couldn’t load the leaderboard right now.</p>';
+      });
   }
 
   function renderShop() {
@@ -2625,6 +2714,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       '<button class="nav-link" data-nav="exam" onclick="App.go(\'exam\')">' + svgIcon("exam") + "<span>Mock Exam</span></button>" +
       '<button class="nav-link" data-nav="stats" onclick="App.navigate(\'stats\')">' + svgIcon("target") + "<span>Stats</span></button>" +
       '<button class="nav-link" data-nav="shop" onclick="App.navigate(\'shop\')">' + svgIcon("coin") + "<span>Shop</span></button>" +
+      '<button class="nav-link" data-nav="leaderboard" onclick="App.navigate(\'leaderboard\')">' + svgIcon("trophy") + "<span>Leaderboard</span></button>" +
       '<div class="nav-spacer"></div>' +
       '<div id="navQuickStats" class="nav-quick-stats"></div>' +
       '<button class="nav-link account-link" onclick="App.openAccount()">' + svgIcon("user") + '<span id="navAccountLabel">Login</span></button>' +
@@ -2644,6 +2734,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     if (name.indexOf("exam") === 0) group = "exam";
     if (name === "stats") group = "stats";
     if (name === "shop") group = "shop";
+    if (name === "leaderboard") group = "leaderboard";
     var links = document.querySelectorAll(".nav-link[data-nav]");
     for (var i = 0; i < links.length; i++) {
       links[i].classList.toggle("active", links[i].getAttribute("data-nav") === group);
@@ -2705,6 +2796,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       case "dashboard": html = renderDashboard(); break;
       case "stats": html = renderStats(); break;
       case "shop": html = renderShop(); break;
+      case "leaderboard": html = renderLeaderboardView(); break;
       case "study-course": html = renderStudyCoursePick(); break;
       case "study-section": html = renderStudySectionPick(Router.current.params.course); break;
       case "study-question": html = renderStudyQuestionView(); break;
@@ -2719,6 +2811,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     updateNavActive();
     updateNavQuickStats();
     updateGlobalCompanion();
+    if (Router.current.name === "leaderboard") loadLeaderboard();
   }
 
   /* =========================================================
@@ -2757,6 +2850,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
     submitExam: submitExam,
     openSettings: openSettings,
     saveExamDate: saveExamDate,
+    saveUsername: saveUsername,
     clearExamDate: clearExamDate,
     toggleTheme: toggleTheme,
     openAccount: openAccount,
