@@ -2189,7 +2189,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
       return '<div class="focus-item"><div class="focus-info">' +
         '<span class="kind-badge kind-' + it.kind + '">' + it.kind + "</span>" +
         '<span class="focus-title">' + esc(it.title) + "</span>" +
-        '<span class="tier-chip tier-' + it.tier + '">' + tierLabel(it.tier) + (it.stat.attempts > 0 ? " &middot; " + it.pct + "%" : "") + "</span>" +
+        '<span class="tier-chip tier-' + it.tier + '">' + tierLabel(it.tier) + (it.tier !== "notstarted" ? " &middot; " + it.pct + "%" : "") + "</span>" +
         '</div><button class="btn btn-primary btn-sm" onclick="App.jumpStudy(' + jsStr(it.course) + "," + jsStr(it.sectionId) + ')">Study this</button></div>';
     }).join("") + "</div>";
   }
@@ -2214,7 +2214,7 @@ const DATA = {"itn":{"title":"Introduction to Networks (ITN)","sections":[{"id":
           return '<button class="mastery-chip tier-' + tier + '" onclick="App.jumpStudy(' + jsStr(c) + "," + jsStr(sec.id) + ')" title="' + esc(sec.title) + '">' +
             '<span class="mastery-chip-kind">' + sec.kind + "</span>" +
             '<span class="mastery-chip-title">' + esc(sec.title) + "</span>" +
-            '<span class="mastery-chip-pct">' + (stat.attempts > 0 ? pct + "%" : "—") + "</span>" +
+            '<span class="mastery-chip-pct">' + (tier !== "notstarted" ? pct + "%" : "—") + "</span>" +
             "</button>";
         }).join("") + "</div></div>";
     }).join("");
