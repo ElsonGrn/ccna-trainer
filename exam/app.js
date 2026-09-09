@@ -3,6 +3,10 @@
 
   var LS_KEY = 'ccnaExam.session';
   var DURATION_MIN = 150;
+  // Cloudflare caches these static assets at the edge with a long TTL and this
+  // token has no cache-purge permission - bump this on every deploy that changes
+  // data.js/app.js/images so the new content gets a fresh, uncached URL.
+  var ASSET_VERSION = '2';
   var TOTAL_QUESTIONS = EXAM_DATA.length;
 
   var BY_ID = {};
@@ -154,7 +158,7 @@
   function renderImages(images) {
     if (!images || !images.length) return '';
     return '<div class="qimages">' + images.map(function (src) {
-      return '<img src="' + esc(src) + '" alt="Exhibit" loading="lazy">';
+      return '<img src="' + esc(src) + '?v=' + ASSET_VERSION + '" alt="Exhibit" loading="lazy">';
     }).join('') + '</div>';
   }
 
